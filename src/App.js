@@ -61,30 +61,13 @@ export default function App() {
     <div style={styles.container}>
       {!started && (
         <div style={styles.infoBox}>
-          <input
-            type="date"
-            style={styles.input}
-            onChange={(e) => setInfo({ ...info, date: e.target.value })}
-          />
-
-          <input
-            placeholder="何回戦"
-            style={styles.input}
-            onChange={(e) => setInfo({ ...info, round: e.target.value })}
-          />
+          <input type="date" style={styles.input} onChange={(e) => setInfo({ ...info, date: e.target.value })}/>
+          <input placeholder="何回戦" style={styles.input} onChange={(e) => setInfo({ ...info, round: e.target.value })}/>
 
           <div style={styles.teamRow}>
-            <input
-              placeholder="チームA"
-              style={styles.teamInput}
-              onChange={(e) => setInfo({ ...info, home: e.target.value })}
-            />
+            <input placeholder="チームA" style={styles.teamInput} onChange={(e) => setInfo({ ...info, home: e.target.value })}/>
             <div style={styles.vs}>vs</div>
-            <input
-              placeholder="チームB"
-              style={styles.teamInput}
-              onChange={(e) => setInfo({ ...info, away: e.target.value })}
-            />
+            <input placeholder="チームB" style={styles.teamInput} onChange={(e) => setInfo({ ...info, away: e.target.value })}/>
           </div>
 
           <button style={styles.startBtn} onClick={() => setStarted(true)}>
@@ -95,16 +78,14 @@ export default function App() {
 
       {started && (
         <>
-          {/* ヘッダー */}
+          {/* 固定ヘッダー */}
           <div style={styles.header}>
             <div>{info.date}</div>
             <div>{info.round}</div>
-            <div style={styles.title}>
-              {info.home} vs {info.away}
-            </div>
+            <div style={styles.title}>{info.home} vs {info.away}</div>
           </div>
 
-          {/* スコア履歴 */}
+          {/* スクロール領域 */}
           <div style={styles.timeline}>
             {events.map((e, i) => (
               <div key={i} style={styles.rowLine}>
@@ -122,7 +103,7 @@ export default function App() {
             <div ref={bottomRef} />
           </div>
 
-          {/* 背番号別 */}
+          {/* 固定スタッツ */}
           <div style={styles.stats}>
             <div style={styles.statGrid}>
               {blueList.map((p, i) => (
@@ -174,18 +155,23 @@ export default function App() {
 
 const styles = {
   container: {
-    background: "linear-gradient(#0a0a0a, #1a1a1a)",
+    background: "#0a0a0a",
     color: "#fff",
-    minHeight: "100vh",
-    paddingBottom: 220,
-    fontFamily: "sans-serif",
+    height: "100vh",
+    display: "flex",
+    flexDirection: "column",
   },
 
-  header: { marginTop: 10 },
-  title: { fontSize: 22, fontWeight: "bold" },
+  header: {
+    textAlign: "center",
+    padding: 10,
+    borderBottom: "1px solid #333",
+  },
+
+  title: { fontSize: 20, fontWeight: "bold" },
 
   timeline: {
-    maxHeight: 260,
+    flex: 1,
     overflowY: "auto",
     padding: 10,
   },
@@ -193,7 +179,6 @@ const styles = {
   rowLine: {
     display: "grid",
     gridTemplateColumns: "1fr 80px 1fr",
-    alignItems: "center",
     marginBottom: 4,
   },
 
@@ -204,44 +189,23 @@ const styles = {
   stats: {
     display: "grid",
     gridTemplateColumns: "1fr 1fr",
-    padding: 10,
-    gap: 10,
+    padding: 6,
+    borderTop: "1px solid #333",
   },
 
   statGrid: {
     display: "grid",
     gridTemplateColumns: "1fr 1fr",
-    gap: 4,
+    gap: 2,
     fontSize: 12,
   },
 
   statBlue: { textAlign: "left" },
   statRed: { textAlign: "right" },
 
-  infoBox: {
-    marginTop: 40,
-    display: "flex",
-    flexDirection: "column",
-    gap: 10,
-  },
-
-  input: { padding: 8 },
-  teamRow: {
-    display: "grid",
-    gridTemplateColumns: "1fr 50px 1fr",
-  },
-
-  teamInput: { textAlign: "center" },
-  vs: { textAlign: "center" },
-
-  startBtn: { marginTop: 10 },
-
   control: {
-    position: "fixed",
-    bottom: 0,
-    width: "100%",
     background: "#111",
-    padding: 10,
+    padding: 8,
   },
 
   row: {
@@ -258,15 +222,27 @@ const styles = {
   },
 
   num: {
-    padding: 14,
-    fontSize: 18,
+    padding: 12,
+    fontSize: 16,
     background: "#222",
     color: "#fff",
-    borderRadius: 8,
   },
 
-  blue: { background: "#2563eb", color: "#fff", padding: 14 },
-  blueSub: { background: "#3b82f6", padding: 14 },
-  red: { background: "#dc2626", color: "#fff", padding: 14 },
-  redSub: { background: "#ef4444", padding: 14 },
+  blue: { background: "#2563eb", padding: 12 },
+  blueSub: { background: "#3b82f6", padding: 12 },
+  red: { background: "#dc2626", padding: 12 },
+  redSub: { background: "#ef4444", padding: 12 },
+
+  infoBox: { marginTop: 40, display: "flex", flexDirection: "column", gap: 10 },
+  input: { padding: 8 },
+
+  teamRow: {
+    display: "grid",
+    gridTemplateColumns: "1fr 50px 1fr",
+  },
+
+  teamInput: { textAlign: "center" },
+  vs: { textAlign: "center" },
+
+  startBtn: { marginTop: 10 },
 };

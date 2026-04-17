@@ -34,6 +34,16 @@ export default function App() {
   const undo = () => setEvents((prev) => prev.slice(0, -1));
   const reset = () => setEvents([]);
 
+  const save = () => {
+    const data = JSON.stringify({ info, events });
+    const blob = new Blob([data], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "handball_score.json";
+    a.click();
+  };
+
   const goalStats = events.reduce((acc, e) => {
     if (e.type === "goal") {
       const key = `${e.team}-${e.number}`;
@@ -69,13 +79,15 @@ export default function App() {
             <div style={styles.title}>{info.home} vs {info.away}</div>
           </div>
 
+          {/* 操作 */}
           <div style={styles.actions}>
             <button onClick={undo}>↩</button>
             <button onClick={reset}>🗑</button>
+            <button onClick={save}>💾</button>
           </div>
 
-          {/* スコア履歴 */}
-          <div>
+          {/* スコア履歴（スクロール改善） */}
+          <div style={styles.timeline}>
             {events.map((e, i) => (
               <div key={i} style={styles.rowLine}>
                 <div style={styles.left}>
@@ -89,19 +101,17 @@ export default function App() {
             ))}
           </div>
 
-          {/* 背番号別 */}
+          {/* 背番号別（高さ揃え） */}
           <div style={styles.stats}>
-            {Object.entries(goalStats).map(([key, count]) => {
-              const [team, num] = key.split("-");
+            {Array.from({ length: 20 }, (_, i) => i + 1).map((num) => {
+              const blue = goalStats[`blue-${num}`] || 0;
+              const red = goalStats[`red-${num}`] || 0;
+
               return (
-                <div key={key} style={styles.rowLine}>
-                  <div style={styles.left}>
-                    {team === "blue" && `#${num} 🔵 ${count}`}
-                  </div>
-                  <div style={styles.center}></div>
-                  <div style={styles.right}>
-                    {team === "red" && `🔴 ${count} #${num}`}
-                  </div>
+                <div key={num} style={styles.rowLine}>
+                  <div style={styles.left}>{blue > 0 && `#${num} 🔵 ${blue}`}</div>
+                  <div style={styles.center}>#{num}</div>
+                  <div style={styles.right}>{red > 0 && `🔴 ${red} #${num}`}</div>
                 </div>
               );
             })}
@@ -148,6 +158,14 @@ const styles = {
     display: "flex",
     justifyContent: "space-around",
     margin: 10,
+  },
+
+  timeline: {
+    maxHeight: 250,
+    overflowY: "auto",
+    border: "1px solid #ccc",
+    margin: 10,
+    padding: 5,
   },
 
   rowLine: {
@@ -201,8 +219,8 @@ const styles = {
     fontSize: 18,
   },
 
-  bigBlue: { background: "#3b82f6", color: "#fff", padding: 14, fontSize: 18 },
-  bigBlueSub: { background: "#93c5fd", padding: 14, fontSize: 18 },
-  bigRed: { background: "#ef4444", color: "#fff", padding: 14, fontSize: 18 },
-  bigRedSub: { background: "#fca5a5", padding: 14, fontSize: 18 },
+  bigBlue: { background: "#3b82f6", color: "#fff", padding: 14 },
+  bigBlueSub: { background: "#93c5fd", padding: 14 },
+  bigRed: { background: "#ef4444", color: "#fff", padding: 14 },
+  bigRedSub: { background: "#fca5a5", padding: 14 },
 };

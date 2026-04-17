@@ -1,10 +1,26 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 
 export default function App() {
+  const [info, setInfo] = useState({
+    date: "",
+    round: "",
+    home: "",
+    away: "",
+  });
+
+  const [started, setStarted] = useState(false);
   const [events, setEvents] = useState([]);
   const [mode, setMode] = useState(null);
 
+  const bottomRef = useRef(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [events]);
+
   const addEvent = (team, type, number) => {
+    if (!started) return;
+
     setEvents((prev) => {
       const newEvents = [...prev, { team, type, number }];
 
@@ -33,83 +49,125 @@ export default function App() {
 
   const blueList = Object.entries(goalStats)
     .filter(([k]) => k.startsWith("blue"))
-    .map(([k, v]) => ({ num: k.split("-")[1], count: v }));
+    .map(([k, v]) => ({ num: k.split("-")[1], count: v }))
+    .slice(0, 8);
 
   const redList = Object.entries(goalStats)
     .filter(([k]) => k.startsWith("red"))
-    .map(([k, v]) => ({ num: k.split("-")[1], count: v }));
+    .map(([k, v]) => ({ num: k.split("-")[1], count: v }))
+    .slice(0, 8);
 
   return (
     <div style={styles.container}>
-      {/* スコア履歴 */}
-      <div style={styles.timeline}>
-        {events.map((e, i) => (
-          <div key={i} style={styles.rowLine}>
-            <div style={styles.left}>
-              {e.team === "blue" &&
-                `#${e.number} ${e.type === "goal" ? "🔵" : "❌"}`}
-            </div>
-            <div style={styles.center}>{e.score}</div>
-            <div style={styles.right}>
-              {e.team === "red" &&
-                `${e.type === "goal" ? "🔴" : "❌"} #${e.number}`}
+      {!started && (
+        <div style={styles.infoBox}>
+          <input
+            type="date"
+            style={styles.input}
+            onChange={(e) => setInfo({ ...info, date: e.target.value })}
+          />
+
+          <input
+            placeholder="何回戦"
+            style={styles.input}
+            onChange={(e) => setInfo({ ...info, round: e.target.value })}
+          />
+
+          <div style={styles.teamRow}>
+            <input
+              placeholder="チームA"
+              style={styles.teamInput}
+              onChange={(e) => setInfo({ ...info, home: e.target.value })}
+            />
+            <div style={styles.vs}>vs</div>
+            <input
+              placeholder="チームB"
+              style={styles.teamInput}
+              onChange={(e) => setInfo({ ...info, away: e.target.value })}
+            />
+          </div>
+
+          <button style={styles.startBtn} onClick={() => setStarted(true)}>
+            試合開始
+          </button>
+        </div>
+      )}
+
+      {started && (
+        <>
+          {/* ヘッダー */}
+          <div style={styles.header}>
+            <div>{info.date}</div>
+            <div>{info.round}</div>
+            <div style={styles.title}>
+              {info.home} vs {info.away}
             </div>
           </div>
-        ))}
-      </div>
 
-      {/* 背番号別 */}
-      <div style={styles.stats}>
-        <div style={styles.col}>
-          {blueList.map((p, i) => (
-            <div key={i} style={styles.statRow}>
-              #{p.num} 🔵 {p.count}
+          {/* スコア履歴 */}
+          <div style={styles.timeline}>
+            {events.map((e, i) => (
+              <div key={i} style={styles.rowLine}>
+                <div style={styles.left}>
+                  {e.team === "blue" &&
+                    `#${e.number} ${e.type === "goal" ? "🔵" : "❌"}`}
+                </div>
+                <div style={styles.center}>{e.score}</div>
+                <div style={styles.right}>
+                  {e.team === "red" &&
+                    `${e.type === "goal" ? "🔴" : "❌"} #${e.number}`}
+                </div>
+              </div>
+            ))}
+            <div ref={bottomRef} />
+          </div>
+
+          {/* 背番号別 */}
+          <div style={styles.stats}>
+            <div style={styles.statGrid}>
+              {blueList.map((p, i) => (
+                <div key={i} style={styles.statBlue}>
+                  #{p.num} 🔵 {p.count}
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
 
-        <div style={styles.col}>
-          {redList.map((p, i) => (
-            <div key={i} style={styles.statRowRight}>
-              🔴 {p.count} #{p.num}
+            <div style={styles.statGrid}>
+              {redList.map((p, i) => (
+                <div key={i} style={styles.statRed}>
+                  🔴 {p.count} #{p.num}
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      </div>
+          </div>
 
-      {/* 入力 */}
-      <div style={styles.control}>
-        <div style={styles.row}>
-          <button style={styles.blue} onClick={() => setMode("blue-goal")}>
-            青G
-          </button>
-          <button style={styles.blueSub} onClick={() => setMode("blue-miss")}>
-            青M
-          </button>
-          <button style={styles.red} onClick={() => setMode("red-goal")}>
-            赤G
-          </button>
-          <button style={styles.redSub} onClick={() => setMode("red-miss")}>
-            赤M
-          </button>
-        </div>
+          {/* 入力 */}
+          <div style={styles.control}>
+            <div style={styles.row}>
+              <button style={styles.blue} onClick={() => setMode("blue-goal")}>青G</button>
+              <button style={styles.blueSub} onClick={() => setMode("blue-miss")}>青M</button>
+              <button style={styles.red} onClick={() => setMode("red-goal")}>赤G</button>
+              <button style={styles.redSub} onClick={() => setMode("red-miss")}>赤M</button>
+            </div>
 
-        <div style={styles.grid}>
-          {numbers.map((n) => (
-            <button
-              key={n}
-              style={styles.num}
-              onClick={() => {
-                if (!mode) return;
-                const [team, type] = mode.split("-");
-                addEvent(team, type, n);
-              }}
-            >
-              {n}
-            </button>
-          ))}
-        </div>
-      </div>
+            <div style={styles.grid}>
+              {numbers.map((n) => (
+                <button
+                  key={n}
+                  style={styles.num}
+                  onClick={() => {
+                    if (!mode) return;
+                    const [team, type] = mode.split("-");
+                    addEvent(team, type, n);
+                  }}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -123,8 +181,11 @@ const styles = {
     fontFamily: "sans-serif",
   },
 
+  header: { marginTop: 10 },
+  title: { fontSize: 22, fontWeight: "bold" },
+
   timeline: {
-    maxHeight: 250,
+    maxHeight: 260,
     overflowY: "auto",
     padding: 10,
   },
@@ -137,27 +198,43 @@ const styles = {
   },
 
   left: { textAlign: "right", color: "#60a5fa" },
-  center: { textAlign: "center", fontWeight: "bold", fontSize: 18 },
+  center: { textAlign: "center", fontWeight: "bold" },
   right: { textAlign: "left", color: "#f87171" },
 
   stats: {
     display: "grid",
     gridTemplateColumns: "1fr 1fr",
     padding: 10,
-    marginTop: 10,
+    gap: 10,
   },
 
-  col: {},
-
-  statRow: {
-    textAlign: "left",
-    marginBottom: 4,
+  statGrid: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 4,
+    fontSize: 12,
   },
 
-  statRowRight: {
-    textAlign: "right",
-    marginBottom: 4,
+  statBlue: { textAlign: "left" },
+  statRed: { textAlign: "right" },
+
+  infoBox: {
+    marginTop: 40,
+    display: "flex",
+    flexDirection: "column",
+    gap: 10,
   },
+
+  input: { padding: 8 },
+  teamRow: {
+    display: "grid",
+    gridTemplateColumns: "1fr 50px 1fr",
+  },
+
+  teamInput: { textAlign: "center" },
+  vs: { textAlign: "center" },
+
+  startBtn: { marginTop: 10 },
 
   control: {
     position: "fixed",

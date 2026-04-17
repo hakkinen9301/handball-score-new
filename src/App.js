@@ -37,6 +37,18 @@ export default function App() {
     });
   };
 
+  const undo = () => setEvents((prev) => prev.slice(0, -1));
+
+  const save = () => {
+    const data = JSON.stringify({ info, events });
+    const blob = new Blob([data], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "handball_score.json";
+    a.click();
+  };
+
   const goalStats = events.reduce((acc, e) => {
     if (e.type === "goal") {
       const key = `${e.team}-${e.number}`;
@@ -63,16 +75,12 @@ export default function App() {
         <div style={styles.infoBox}>
           <input type="date" style={styles.input} onChange={(e) => setInfo({ ...info, date: e.target.value })}/>
           <input placeholder="何回戦" style={styles.input} onChange={(e) => setInfo({ ...info, round: e.target.value })}/>
-
           <div style={styles.teamRow}>
             <input placeholder="チームA" style={styles.teamInput} onChange={(e) => setInfo({ ...info, home: e.target.value })}/>
             <div style={styles.vs}>vs</div>
             <input placeholder="チームB" style={styles.teamInput} onChange={(e) => setInfo({ ...info, away: e.target.value })}/>
           </div>
-
-          <button style={styles.startBtn} onClick={() => setStarted(true)}>
-            試合開始
-          </button>
+          <button style={styles.startBtn} onClick={() => setStarted(true)}>試合開始</button>
         </div>
       )}
 
@@ -85,7 +93,7 @@ export default function App() {
             <div style={styles.title}>{info.home} vs {info.away}</div>
           </div>
 
-          {/* スクロール領域 */}
+          {/* スコア履歴（スクロール） */}
           <div style={styles.timeline}>
             {events.map((e, i) => (
               <div key={i} style={styles.rowLine}>
@@ -146,6 +154,12 @@ export default function App() {
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* 最下部操作 */}
+          <div style={styles.bottomActions}>
+            <button onClick={undo}>↩ 戻る</button>
+            <button onClick={save}>💾 保存</button>
           </div>
         </>
       )}
@@ -228,12 +242,26 @@ const styles = {
     color: "#fff",
   },
 
-  blue: { background: "#2563eb", padding: 12 },
-  blueSub: { background: "#3b82f6", padding: 12 },
-  red: { background: "#dc2626", padding: 12 },
-  redSub: { background: "#ef4444", padding: 12 },
+  blue: { background: "#2563eb", padding: 12, color: "#fff" },
+  blueSub: { background: "#3b82f6", padding: 12, color: "#fff" },
+  red: { background: "#dc2626", padding: 12, color: "#fff" },
+  redSub: { background: "#ef4444", padding: 12, color: "#fff" },
 
-  infoBox: { marginTop: 40, display: "flex", flexDirection: "column", gap: 10 },
+  bottomActions: {
+    display: "flex",
+    justifyContent: "space-around",
+    padding: 10,
+    background: "#000",
+    borderTop: "1px solid #333",
+  },
+
+  infoBox: {
+    marginTop: 40,
+    display: "flex",
+    flexDirection: "column",
+    gap: 10,
+  },
+
   input: { padding: 8 },
 
   teamRow: {

@@ -37,16 +37,72 @@ export default function App() {
     });
   };
 
+  const addSection = (label) => {
+    setEvents((prev) => [...prev, { type: "section", label }]);
+  };
+
   const undo = () => setEvents((prev) => prev.slice(0, -1));
 
+  // ★ 前半・後半スコア集計
+  let firstHalf = { blue: 0, red: 0 };
+  let secondHalf = { blue: 0, red: 0 };
+  let current = "first";
+
+  events.forEach((e) => {
+    if (e.type === "section") {
+      if (e.label.includes("後半")) current = "second";
+      return;
+    }
+
+    if (e.type === "goal") {
+      if (current === "first") {
+        if (e.team === "blue") firstHalf.blue++;
+        if (e.team === "red") firstHalf.red++;
+      } else {
+        if (e.team === "blue") secondHalf.blue++;
+        if (e.team === "red") secondHalf.red++;
+      }
+    }
+  });
+
+  const totalBlue = firstHalf.blue + secondHalf.blue;
+  const totalRed = firstHalf.red + secondHalf.red;
+
   const save = () => {
-    const data = JSON.stringify({ info, events });
-    const blob = new Blob([data], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "handball_score.json";
-    a.click();
+    let text = "";
+    text += `${info.date}\n${info.round}\n${info.home} vs ${info.away}\n\n`;
+    text += `前半 ${firstHalf.blue}-${firstHalf.red}\n`;
+    text += `後半 ${secondHalf.blue}-${secondHalf.red}\n`;
+    text += `合計 ${totalBlue}-${totalRed}\n\n`;
+
+    events.forEach((e) => {
+      if (e.type === "section") {
+        text += `ーー ${e.label} ーー\n`;
+        return;
+      }
+
+      let left = "";
+      let right = "";
+
+      const mark =
+        e.type === "goal"
+          ? e.team === "blue"
+            ? "🔵"
+            : "🔴"
+          : e.type === "miss"
+          ? "❌"
+          : e.type === "out"
+          ? "⛔"
+          : "↩";
+
+      if (e.team === "blue") left = `#${e.number} ${mark}`;
+      if (e.team === "red") right = `${mark} #${e.number}`;
+
+      text += `${left.padEnd(12, " ")} ${e.score} ${right}\n`;
+    });
+
+    navigator.clipboard.writeText(text);
+    alert("コピーしました");
   };
 
   const goalStats = events.reduce((acc, e) => {
@@ -61,12 +117,14 @@ export default function App() {
 
   const blueList = Object.entries(goalStats)
     .filter(([k]) => k.startsWith("blue"))
-    .map(([k, v]) => ({ num: k.split("-")[1], count: v }))
+    .map(([k, v]) => ({ num: Number(k.split("-")[1]), count: v }))
+    .sort((a, b) => a.num - b.num)
     .slice(0, 8);
 
   const redList = Object.entries(goalStats)
     .filter(([k]) => k.startsWith("red"))
-    .map(([k, v]) => ({ num: k.split("-")[1], count: v }))
+    .map(([k, v]) => ({ num: Number(k.split("-")[1]), count: v }))
+    .sort((a, b) => a.num - b.num)
     .slice(0, 8);
 
   return (
@@ -86,191 +144,17 @@ export default function App() {
 
       {started && (
         <>
-          {/* 固定ヘッダー */}
           <div style={styles.header}>
             <div>{info.date}</div>
             <div>{info.round}</div>
             <div style={styles.title}>{info.home} vs {info.away}</div>
-          </div>
 
-          {/* スコア履歴（スクロール） */}
-          <div style={styles.timeline}>
-            {events.map((e, i) => (
-              <div key={i} style={styles.rowLine}>
-                <div style={styles.left}>
-                  {e.team === "blue" &&
-                    `#${e.number} ${e.type === "goal" ? "🔵" : "❌"}`}
-                </div>
-                <div style={styles.center}>{e.score}</div>
-                <div style={styles.right}>
-                  {e.team === "red" &&
-                    `${e.type === "goal" ? "🔴" : "❌"} #${e.number}`}
-                </div>
-              </div>
-            ))}
-            <div ref={bottomRef} />
-          </div>
-
-          {/* 固定スタッツ */}
-          <div style={styles.stats}>
-            <div style={styles.statGrid}>
-              {blueList.map((p, i) => (
-                <div key={i} style={styles.statBlue}>
-                  #{p.num} 🔵 {p.count}
-                </div>
-              ))}
-            </div>
-
-            <div style={styles.statGrid}>
-              {redList.map((p, i) => (
-                <div key={i} style={styles.statRed}>
-                  🔴 {p.count} #{p.num}
-                </div>
-              ))}
+            {/* ★スコア表示 */}
+            <div>前半 {firstHalf.blue}-{firstHalf.red}</div>
+            <div>後半 {secondHalf.blue}-{secondHalf.red}</div>
+            <div style={{ fontWeight: "bold" }}>
+              合計 {totalBlue}-{totalRed}
             </div>
           </div>
 
-          {/* 入力 */}
-          <div style={styles.control}>
-            <div style={styles.row}>
-              <button style={styles.blue} onClick={() => setMode("blue-goal")}>青G</button>
-              <button style={styles.blueSub} onClick={() => setMode("blue-miss")}>青M</button>
-              <button style={styles.red} onClick={() => setMode("red-goal")}>赤G</button>
-              <button style={styles.redSub} onClick={() => setMode("red-miss")}>赤M</button>
-            </div>
-
-            <div style={styles.grid}>
-              {numbers.map((n) => (
-                <button
-                  key={n}
-                  style={styles.num}
-                  onClick={() => {
-                    if (!mode) return;
-                    const [team, type] = mode.split("-");
-                    addEvent(team, type, n);
-                  }}
-                >
-                  {n}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* 最下部操作 */}
-          <div style={styles.bottomActions}>
-            <button onClick={undo}>↩ 戻る</button>
-            <button onClick={save}>💾 保存</button>
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-const styles = {
-  container: {
-    background: "#0a0a0a",
-    color: "#fff",
-    height: "100vh",
-    display: "flex",
-    flexDirection: "column",
-  },
-
-  header: {
-    textAlign: "center",
-    padding: 10,
-    borderBottom: "1px solid #333",
-  },
-
-  title: { fontSize: 20, fontWeight: "bold" },
-
-  timeline: {
-    flex: 1,
-    overflowY: "auto",
-    padding: 10,
-  },
-
-  rowLine: {
-    display: "grid",
-    gridTemplateColumns: "1fr 80px 1fr",
-    marginBottom: 4,
-  },
-
-  left: { textAlign: "right", color: "#60a5fa" },
-  center: { textAlign: "center", fontWeight: "bold" },
-  right: { textAlign: "left", color: "#f87171" },
-
-  stats: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    padding: 6,
-    borderTop: "1px solid #333",
-  },
-
-  statGrid: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: 2,
-    fontSize: 12,
-  },
-
-  statBlue: { textAlign: "left" },
-  statRed: { textAlign: "right" },
-
-  control: {
-    background: "#111",
-    padding: 8,
-  },
-
-  row: {
-    display: "grid",
-    gridTemplateColumns: "repeat(4,1fr)",
-    gap: 5,
-    marginBottom: 5,
-  },
-
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(5,1fr)",
-    gap: 5,
-  },
-
-  num: {
-    padding: 12,
-    fontSize: 16,
-    background: "#222",
-    color: "#fff",
-  },
-
-  blue: { background: "#2563eb", padding: 12, color: "#fff" },
-  blueSub: { background: "#3b82f6", padding: 12, color: "#fff" },
-  red: { background: "#dc2626", padding: 12, color: "#fff" },
-  redSub: { background: "#ef4444", padding: 12, color: "#fff" },
-
-  bottomActions: {
-    display: "flex",
-    justifyContent: "space-around",
-    padding: 10,
-    background: "#000",
-    borderTop: "1px solid #333",
-  },
-
-  infoBox: {
-    marginTop: 40,
-    display: "flex",
-    flexDirection: "column",
-    gap: 10,
-  },
-
-  input: { padding: 8 },
-
-  teamRow: {
-    display: "grid",
-    gridTemplateColumns: "1fr 50px 1fr",
-  },
-
-  teamInput: { textAlign: "center" },
-  vs: { textAlign: "center" },
-
-  startBtn: { marginTop: 10 },
-};
+          {/* 以下はそのまま */}

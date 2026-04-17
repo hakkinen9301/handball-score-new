@@ -1,20 +1,10 @@
 import { useState } from "react";
 
 export default function App() {
-  const [info, setInfo] = useState({
-    date: "",
-    round: "",
-    home: "",
-    away: "",
-  });
-
-  const [started, setStarted] = useState(false);
   const [events, setEvents] = useState([]);
   const [mode, setMode] = useState(null);
 
   const addEvent = (team, type, number) => {
-    if (!started) return;
-
     setEvents((prev) => {
       const newEvents = [...prev, { team, type, number }];
 
@@ -31,19 +21,6 @@ export default function App() {
     });
   };
 
-  const undo = () => setEvents((prev) => prev.slice(0, -1));
-  const reset = () => setEvents([]);
-
-  const save = () => {
-    const data = JSON.stringify({ info, events });
-    const blob = new Blob([data], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "handball_score.json";
-    a.click();
-  };
-
   const goalStats = events.reduce((acc, e) => {
     if (e.type === "goal") {
       const key = `${e.team}-${e.number}`;
@@ -52,152 +29,141 @@ export default function App() {
     return acc;
   }, {});
 
-  const numbers = Array.from({ length: 20 }, (_, i) => i + 1);
+  const numbers = Array.from({ length: 15 }, (_, i) => i + 1);
+
+  const blueList = Object.entries(goalStats)
+    .filter(([k]) => k.startsWith("blue"))
+    .map(([k, v]) => ({ num: k.split("-")[1], count: v }));
+
+  const redList = Object.entries(goalStats)
+    .filter(([k]) => k.startsWith("red"))
+    .map(([k, v]) => ({ num: k.split("-")[1], count: v }));
 
   return (
     <div style={styles.container}>
-      {!started && (
-        <div style={styles.infoBox}>
-          <input type="date" style={styles.input} onChange={(e) => setInfo({ ...info, date: e.target.value })}/>
-          <input placeholder="何回戦" style={styles.input} onChange={(e) => setInfo({ ...info, round: e.target.value })}/>
-
-          <div style={styles.teamRow}>
-            <input placeholder="チームA" style={styles.teamInput} onChange={(e) => setInfo({ ...info, home: e.target.value })}/>
-            <div style={styles.vs}>vs</div>
-            <input placeholder="チームB" style={styles.teamInput} onChange={(e) => setInfo({ ...info, away: e.target.value })}/>
+      {/* スコア履歴 */}
+      <div style={styles.timeline}>
+        {events.map((e, i) => (
+          <div key={i} style={styles.rowLine}>
+            <div style={styles.left}>
+              {e.team === "blue" &&
+                `#${e.number} ${e.type === "goal" ? "🔵" : "❌"}`}
+            </div>
+            <div style={styles.center}>{e.score}</div>
+            <div style={styles.right}>
+              {e.team === "red" &&
+                `${e.type === "goal" ? "🔴" : "❌"} #${e.number}`}
+            </div>
           </div>
+        ))}
+      </div>
 
-          <button style={styles.startBtn} onClick={() => setStarted(true)}>試合開始</button>
+      {/* 背番号別 */}
+      <div style={styles.stats}>
+        <div style={styles.col}>
+          {blueList.map((p, i) => (
+            <div key={i} style={styles.statRow}>
+              #{p.num} 🔵 {p.count}
+            </div>
+          ))}
         </div>
-      )}
 
-      {started && (
-        <>
-          <div style={styles.header}>
-            <div>{info.date}</div>
-            <div>{info.round}</div>
-            <div style={styles.title}>{info.home} vs {info.away}</div>
-          </div>
-
-          {/* 操作 */}
-          <div style={styles.actions}>
-            <button onClick={undo}>↩</button>
-            <button onClick={reset}>🗑</button>
-            <button onClick={save}>💾</button>
-          </div>
-
-          {/* スコア履歴（スクロール改善） */}
-          <div style={styles.timeline}>
-            {events.map((e, i) => (
-              <div key={i} style={styles.rowLine}>
-                <div style={styles.left}>
-                  {e.team === "blue" && `#${e.number} ${e.type === "goal" ? "🔵" : "❌"}`}
-                </div>
-                <div style={styles.center}>{e.score}</div>
-                <div style={styles.right}>
-                  {e.team === "red" && `${e.type === "goal" ? "🔴" : "❌"} #${e.number}`}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* 背番号別（高さ揃え） */}
-          <div style={styles.stats}>
-            {Array.from({ length: 20 }, (_, i) => i + 1).map((num) => {
-              const blue = goalStats[`blue-${num}`] || 0;
-              const red = goalStats[`red-${num}`] || 0;
-
-              return (
-                <div key={num} style={styles.rowLine}>
-                  <div style={styles.left}>{blue > 0 && `#${num} 🔵 ${blue}`}</div>
-                  <div style={styles.center}>#{num}</div>
-                  <div style={styles.right}>{red > 0 && `🔴 ${red} #${num}`}</div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* 入力 */}
-          <div style={styles.control}>
-            <div style={styles.row}>
-              <button style={styles.bigBlue} onClick={() => setMode("blue-goal")}>青G</button>
-              <button style={styles.bigBlueSub} onClick={() => setMode("blue-miss")}>青M</button>
-              <button style={styles.bigRed} onClick={() => setMode("red-goal")}>赤G</button>
-              <button style={styles.bigRedSub} onClick={() => setMode("red-miss")}>赤M</button>
+        <div style={styles.col}>
+          {redList.map((p, i) => (
+            <div key={i} style={styles.statRowRight}>
+              🔴 {p.count} #{p.num}
             </div>
+          ))}
+        </div>
+      </div>
 
-            <div style={styles.grid}>
-              {numbers.map((n) => (
-                <button
-                  key={n}
-                  style={styles.num}
-                  onClick={() => {
-                    if (!mode) return;
-                    const [team, type] = mode.split("-");
-                    addEvent(team, type, n);
-                  }}
-                >
-                  {n}
-                </button>
-              ))}
-            </div>
-          </div>
-        </>
-      )}
+      {/* 入力 */}
+      <div style={styles.control}>
+        <div style={styles.row}>
+          <button style={styles.blue} onClick={() => setMode("blue-goal")}>
+            青G
+          </button>
+          <button style={styles.blueSub} onClick={() => setMode("blue-miss")}>
+            青M
+          </button>
+          <button style={styles.red} onClick={() => setMode("red-goal")}>
+            赤G
+          </button>
+          <button style={styles.redSub} onClick={() => setMode("red-miss")}>
+            赤M
+          </button>
+        </div>
+
+        <div style={styles.grid}>
+          {numbers.map((n) => (
+            <button
+              key={n}
+              style={styles.num}
+              onClick={() => {
+                if (!mode) return;
+                const [team, type] = mode.split("-");
+                addEvent(team, type, n);
+              }}
+            >
+              {n}
+            </button>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
 
 const styles = {
-  container: { textAlign: "center", paddingBottom: 220 },
-
-  header: { marginTop: 10 },
-  title: { fontSize: 22, fontWeight: "bold" },
-
-  actions: {
-    display: "flex",
-    justifyContent: "space-around",
-    margin: 10,
+  container: {
+    background: "linear-gradient(#0a0a0a, #1a1a1a)",
+    color: "#fff",
+    minHeight: "100vh",
+    paddingBottom: 220,
+    fontFamily: "sans-serif",
   },
 
   timeline: {
     maxHeight: 250,
     overflowY: "auto",
-    border: "1px solid #ccc",
-    margin: 10,
-    padding: 5,
+    padding: 10,
   },
 
   rowLine: {
     display: "grid",
     gridTemplateColumns: "1fr 80px 1fr",
     alignItems: "center",
+    marginBottom: 4,
   },
 
-  left: { textAlign: "right", paddingRight: 10 },
-  center: { textAlign: "center", fontWeight: "bold" },
-  right: { textAlign: "left", paddingLeft: 10 },
+  left: { textAlign: "right", color: "#60a5fa" },
+  center: { textAlign: "center", fontWeight: "bold", fontSize: 18 },
+  right: { textAlign: "left", color: "#f87171" },
 
-  stats: { marginTop: 10 },
-
-  infoBox: { marginTop: 40 },
-  input: { padding: 8 },
-
-  teamRow: {
+  stats: {
     display: "grid",
-    gridTemplateColumns: "1fr 50px 1fr",
+    gridTemplateColumns: "1fr 1fr",
+    padding: 10,
+    marginTop: 10,
   },
 
-  teamInput: { textAlign: "center" },
-  vs: { textAlign: "center" },
+  col: {},
 
-  startBtn: { marginTop: 10 },
+  statRow: {
+    textAlign: "left",
+    marginBottom: 4,
+  },
+
+  statRowRight: {
+    textAlign: "right",
+    marginBottom: 4,
+  },
 
   control: {
     position: "fixed",
     bottom: 0,
     width: "100%",
-    background: "#fff",
+    background: "#111",
     padding: 10,
   },
 
@@ -215,12 +181,15 @@ const styles = {
   },
 
   num: {
-    padding: 12,
+    padding: 14,
     fontSize: 18,
+    background: "#222",
+    color: "#fff",
+    borderRadius: 8,
   },
 
-  bigBlue: { background: "#3b82f6", color: "#fff", padding: 14 },
-  bigBlueSub: { background: "#93c5fd", padding: 14 },
-  bigRed: { background: "#ef4444", color: "#fff", padding: 14 },
-  bigRedSub: { background: "#fca5a5", padding: 14 },
+  blue: { background: "#2563eb", color: "#fff", padding: 14 },
+  blueSub: { background: "#3b82f6", padding: 14 },
+  red: { background: "#dc2626", color: "#fff", padding: 14 },
+  redSub: { background: "#ef4444", padding: 14 },
 };

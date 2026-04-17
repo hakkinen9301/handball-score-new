@@ -49,16 +49,17 @@ export default function App() {
             onChange={(e) => setInfo({ ...info, round: e.target.value })}
           />
 
-          <div style={{ display: "flex", gap: 5 }}>
+          {/* 左右対称 */}
+          <div style={styles.teamRow}>
             <input
               placeholder="チームA"
-              style={styles.input}
+              style={styles.teamInput}
               onChange={(e) => setInfo({ ...info, home: e.target.value })}
             />
-            <div style={{ alignSelf: "center" }}>vs</div>
+            <div style={styles.vs}>vs</div>
             <input
               placeholder="チームB"
-              style={styles.input}
+              style={styles.teamInput}
               onChange={(e) => setInfo({ ...info, away: e.target.value })}
             />
           </div>
@@ -74,36 +75,37 @@ export default function App() {
           <div style={styles.header}>
             <div>{info.date}</div>
             <div>{info.round}</div>
-            <div style={{ fontWeight: "bold", fontSize: 22 }}>
+            <div style={styles.title}>
               {info.home} vs {info.away}
             </div>
           </div>
 
-          {/* スコア履歴（ジグザグ） */}
+          {/* スコア履歴（中央固定） */}
           <div style={styles.timeline}>
-            {events
-              .filter((e) => e.type === "goal")
-              .map((e, i) => (
-                <div
-                  key={i}
-                  style={{
-                    display: "flex",
-                    justifyContent:
-                      e.team === "blue" ? "flex-start" : "flex-end",
-                  }}
-                >
+            {events.map((e, i) => (
+              <div key={i} style={styles.timelineRow}>
+                {/* 左（青） */}
+                <div style={styles.left}>
                   {e.team === "blue" && (
-                    <div>
-                      #{e.number} 🔵 {e.score}
-                    </div>
-                  )}
-                  {e.team === "red" && (
-                    <div>
-                      {e.score} 🔴 #{e.number}
-                    </div>
+                    <>
+                      #{e.number} {e.type === "goal" ? "🔵" : "❌"}
+                    </>
                   )}
                 </div>
-              ))}
+
+                {/* 中央（スコア） */}
+                <div style={styles.center}>{e.score}</div>
+
+                {/* 右（赤） */}
+                <div style={styles.right}>
+                  {e.team === "red" && (
+                    <>
+                      {e.type === "goal" ? "🔴" : "❌"} #{e.number}
+                    </>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
 
           {/* 入力 */}
@@ -121,7 +123,6 @@ export default function App() {
               >
                 青M
               </button>
-
               <button
                 style={styles.red}
                 onClick={() => setMode("red-goal")}
@@ -170,10 +171,37 @@ const styles = {
     fontSize: 18,
   },
 
+  title: {
+    fontSize: 22,
+    fontWeight: "bold",
+  },
+
   timeline: {
     marginTop: 10,
     padding: 10,
     fontSize: 18,
+  },
+
+  timelineRow: {
+    display: "grid",
+    gridTemplateColumns: "1fr 80px 1fr",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+
+  left: {
+    textAlign: "right",
+    paddingRight: 10,
+  },
+
+  center: {
+    textAlign: "center",
+    fontWeight: "bold",
+  },
+
+  right: {
+    textAlign: "left",
+    paddingLeft: 10,
   },
 
   infoBox: {
@@ -186,6 +214,23 @@ const styles = {
   input: {
     fontSize: 16,
     padding: 8,
+  },
+
+  teamRow: {
+    display: "grid",
+    gridTemplateColumns: "1fr 50px 1fr",
+    alignItems: "center",
+    gap: 5,
+  },
+
+  teamInput: {
+    fontSize: 16,
+    padding: 8,
+    textAlign: "center",
+  },
+
+  vs: {
+    textAlign: "center",
   },
 
   startBtn: {

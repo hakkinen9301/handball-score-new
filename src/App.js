@@ -188,4 +188,103 @@ export default function App() {
 
             <div style={styles.btnRow}>
               <button onClick={()=>setMode("blue-goal")}>青G</button>
-              <button onClick={()=>setMode("blue
+              <button onClick={()=>setMode("blue-miss")}>青M</button>
+              <button onClick={()=>setMode("red-goal")}>赤G</button>
+              <button onClick={()=>setMode("red-miss")}>赤M</button>
+
+              <button onClick={()=>setMode("blue-out")}>青OUT</button>
+              <button onClick={()=>setMode("blue-in")}>青IN</button>
+              <button onClick={()=>setMode("red-out")}>赤OUT</button>
+              <button onClick={()=>setMode("red-in")}>赤IN</button>
+            </div>
+
+            <div style={styles.grid}>
+              {numbers.map(n=>(
+                <button key={n} onClick={()=>{
+                  if(!mode)return;
+                  const [t,ty]=mode.split("-");
+                  addEvent(t,ty,n);
+                }}>{n}</button>
+              ))}
+            </div>
+
+            <div>
+              <button onClick={undo}>戻る</button>
+              <button onClick={saveGame}>保存</button>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+const styles = {
+  container:{
+    background:"#0a0a0a",
+    color:"#fff",
+    height:"100vh",
+    display:"flex",
+    flexDirection:"column",
+  },
+
+  header:{
+    position:"sticky",
+    top:0,
+    background:"#000",
+    textAlign:"center",
+    padding:8,
+  },
+
+  timeline:{
+    flex:1,
+    overflowY:"auto",
+    background:
+      "radial-gradient(circle at center,#1f2937 0%,#0a0a0a 70%)",
+    padding:6,
+  },
+
+  row:{
+    display:"grid",
+    gridTemplateColumns:"50px 100px 70px 100px 50px",
+    fontSize:12,
+  },
+
+  leftOut:{textAlign:"right",color:"#60a5fa"},
+  left:{textAlign:"right",color:"#60a5fa"},
+  center:{textAlign:"center"},
+  right:{textAlign:"left",color:"#f87171"},
+  rightOut:{textAlign:"left",color:"#f87171"},
+
+  bottom:{
+    position:"sticky",
+    bottom:0,
+    background:"#000",
+    padding:6,
+  },
+
+  stats:{
+    display:"grid",
+    gridTemplateColumns:"1fr 1fr",
+    fontSize:10,
+  },
+
+  btnRow:{
+    display:"grid",
+    gridTemplateColumns:"repeat(4,1fr)",
+    gap:3,
+  },
+
+  grid:{
+    display:"grid",
+    gridTemplateColumns:"repeat(5,1fr)",
+    gap:3,
+  },
+
+  infoBox:{
+    marginTop:40,
+    display:"flex",
+    flexDirection:"column",
+    gap:10,
+  },
+};

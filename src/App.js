@@ -26,8 +26,8 @@ export default function App() {
   const addEvent = (team, type, number) => {
     setEvents((prev) => {
       const list = [...prev, { team, type, number }];
-      let b = 0,
-        r = 0;
+      let b = 0, r = 0;
+
       return list.map((e) => {
         if (e.type === "goal") {
           if (e.team === "blue") b++;
@@ -43,7 +43,31 @@ export default function App() {
 
   const undo = () => setEvents((prev) => prev.slice(0, -1));
 
-  // 得点集計
+  // ■ 前半後半＋合計
+  let first = { b: 0, r: 0 };
+  let second = { b: 0, r: 0 };
+  let half = "first";
+
+  events.forEach((e) => {
+    if (e.type === "section") {
+      if (e.label.includes("後半")) half = "second";
+      return;
+    }
+    if (e.type === "goal") {
+      if (half === "first") {
+        if (e.team === "blue") first.b++;
+        if (e.team === "red") first.r++;
+      } else {
+        if (e.team === "blue") second.b++;
+        if (e.team === "red") second.r++;
+      }
+    }
+  });
+
+  const totalB = first.b + second.b;
+  const totalR = first.r + second.r;
+
+  // ■ 得点者
   const goalStats = events.reduce((acc, e) => {
     if (e.type === "goal") {
       const key = `${e.team}-${e.number}`;
@@ -64,15 +88,11 @@ export default function App() {
     .sort((a, b) => a.num - b.num)
     .slice(0, 8);
 
-  // 画像保存
   const save = async () => {
-    const el = captureRef.current;
-
-    const canvas = await html2canvas(el, {
+    const canvas = await html2canvas(captureRef.current, {
       backgroundColor: "#0a0a0a",
       scale: 2,
     });
-
     const link = document.createElement("a");
     link.download = "score.png";
     link.href = canvas.toDataURL();
@@ -98,110 +118,90 @@ export default function App() {
 
       {started && (
         <>
-          {/* ★固定ヘッダー */}
+          {/* ■ 上固定 */}
           <div style={styles.header}>
             <div>{info.date}　{info.round}</div>
             <div style={styles.title}>{info.home} vs {info.away}</div>
+            <div>合計 {totalB}-{totalR}</div>
+            <div>前半 {first.b}-{first.r}</div>
+            <div>後半 {second.b}-{second.r}</div>
           </div>
 
-          {/* ★画像対象 */}
-          <div ref={captureRef} style={styles.captureArea}>
-            {/* スコア履歴 */}
-            <div ref={timelineRef} style={styles.timeline}>
-              {events.map((e, i) => {
-                if (e.type === "section") {
-                  return <div key={i} style={styles.section}>{e.label}</div>;
-                }
+          {/* ■ 履歴 */}
+          <div ref={captureRef} style={styles.timeline}>
+            {events.map((e, i) => {
+              if (e.type === "section") {
+                return <div key={i} style={styles.section}>{e.label}</div>;
+              }
 
-                const mark =
-                  e.type === "goal"
-                    ? e.team === "blue"
-                      ? "🔵"
-                      : "🔴"
-                    : e.type === "miss"
-                    ? "❌"
-                    : e.type === "out"
-                    ? "⛔"
-                    : "↩";
+              const mark =
+                e.type === "goal"
+                  ? e.team === "blue" ? "🔵" : "🔴"
+                  : e.type === "miss"
+                  ? "❌"
+                  : e.type === "out"
+                  ? "⛔"
+                  : "↩";
 
-                return (
-                  <div key={i} style={styles.row}>
-                    <div style={styles.col1}>
-                      {e.team === "blue" &&
-                        (e.type === "out" || e.type === "in") &&
-                        `#${e.number} ${mark}`}
-                    </div>
-
-                    <div style={styles.col2}>
-                      {e.team === "blue" &&
-                        (e.type === "goal" || e.type === "miss") &&
-                        `#${e.number} ${mark}`}
-                    </div>
-
-                    <div style={styles.col3}>
-                      {e.type === "goal" || e.type === "miss"
-                        ? e.score
-                        : ""}
-                    </div>
-
-                    <div style={styles.col4}>
-                      {e.team === "red" &&
-                        (e.type === "goal" || e.type === "miss") &&
-                        `${mark} #${e.number}`}
-                    </div>
-
-                    <div style={styles.col5}>
-                      {e.team === "red" &&
-                        (e.type === "out" || e.type === "in") &&
-                        `${mark} #${e.number}`}
-                    </div>
+              return (
+                <div key={i} style={styles.row}>
+                  <div style={styles.leftOut}>
+                    {e.team === "blue" && (e.type === "out" || e.type === "in") && `#${e.number} ${mark}`}
                   </div>
-                );
-              })}
-            </div>
 
-            {/* ★背番号得点（画像にも含む） */}
+                  <div style={styles.left}>
+                    {e.team === "blue" && (e.type === "goal" || e.type === "miss") && `#${e.number} ${mark}`}
+                  </div>
+
+                  <div style={styles.center}>
+                    {(e.type === "goal" || e.type === "miss") && e.score}
+                  </div>
+
+                  <div style={styles.right}>
+                    {e.team === "red" && (e.type === "goal" || e.type === "miss") && `${mark} #${e.number}`}
+                  </div>
+
+                  <div style={styles.rightOut}>
+                    {e.team === "red" && (e.type === "out" || e.type === "in") && `${mark} #${e.number}`}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* ■ 下固定 */}
+          <div style={styles.bottom}>
+            {/* 得点者 */}
             <div style={styles.stats}>
               <div>
-                {blueList.map((p, i) => (
-                  <div key={i}>#{p.num} 🔵 {p.count}</div>
-                ))}
+                {blueList.map((p, i) => <div key={i}>#{p.num} 🔵 {p.count}</div>)}
               </div>
               <div>
-                {redList.map((p, i) => (
-                  <div key={i}>#{p.num} 🔴 {p.count}</div>
-                ))}
+                {redList.map((p, i) => <div key={i}>#{p.num} 🔴 {p.count}</div>)}
               </div>
             </div>
-          </div>
 
-          {/* ★下部固定 */}
-          <div style={styles.bottom}>
+            {/* ボタン */}
             <div style={styles.btnRow}>
-              <div>
-                <button onClick={() => setMode("blue-goal")}>青G</button>
-                <button onClick={() => setMode("blue-miss")}>青M</button>
-                <button onClick={() => setMode("blue-out")}>青OUT</button>
-                <button onClick={() => setMode("blue-in")}>青IN</button>
-              </div>
-              <div>
-                <button onClick={() => setMode("red-goal")}>赤G</button>
-                <button onClick={() => setMode("red-miss")}>赤M</button>
-                <button onClick={() => setMode("red-out")}>赤OUT</button>
-                <button onClick={() => setMode("red-in")}>赤IN</button>
-              </div>
+              <button style={styles.blue} onClick={() => setMode("blue-goal")}>青G</button>
+              <button style={styles.blueSub} onClick={() => setMode("blue-miss")}>青M</button>
+              <button style={styles.red} onClick={() => setMode("red-goal")}>赤G</button>
+              <button style={styles.redSub} onClick={() => setMode("red-miss")}>赤M</button>
+
+              <button style={styles.blueSub} onClick={() => setMode("blue-out")}>青OUT</button>
+              <button style={styles.blueSub} onClick={() => setMode("blue-in")}>青IN</button>
+              <button style={styles.redSub} onClick={() => setMode("red-out")}>赤OUT</button>
+              <button style={styles.redSub} onClick={() => setMode("red-in")}>赤IN</button>
             </div>
 
             <div style={styles.grid}>
               {numbers.map((n) => (
-                <button
-                  key={n}
+                <button key={n} style={styles.num}
                   onClick={() => {
                     if (!mode) return;
                     const [team, type] = mode.split("-");
                     addEvent(team, type, n);
-                  }}
-                >
+                  }}>
                   {n}
                 </button>
               ))}
@@ -238,35 +238,23 @@ const styles = {
 
   title: { fontSize: 18, fontWeight: "bold" },
 
-  captureArea: {
-    paddingTop: 10,
-    paddingBottom: 20,
-  },
-
   timeline: {
     flex: 1,
     overflowY: "auto",
-    height: "45vh",
+    padding: 10,
     background: "#0a0a0a",
   },
 
   row: {
     display: "grid",
-    gridTemplateColumns: "60px 120px 80px 120px 60px",
-    alignItems: "center",
+    gridTemplateColumns: "50px 110px 70px 110px 50px",
   },
 
-  col1: { textAlign: "right", color: "#60a5fa" },
-  col2: { textAlign: "right", color: "#60a5fa" },
-  col3: { textAlign: "center", fontWeight: "bold" },
-  col4: { textAlign: "left", color: "#f87171" },
-  col5: { textAlign: "left", color: "#f87171" },
-
-  stats: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    padding: 10,
-  },
+  leftOut: { textAlign: "right", color: "#60a5fa" },
+  left: { textAlign: "right", color: "#60a5fa" },
+  center: { textAlign: "center", fontWeight: "bold" },
+  right: { textAlign: "left", color: "#f87171" },
+  rightOut: { textAlign: "left", color: "#f87171" },
 
   bottom: {
     position: "sticky",
@@ -275,20 +263,41 @@ const styles = {
     padding: 10,
   },
 
+  stats: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    marginBottom: 5,
+  },
+
   btnRow: {
-    display: "flex",
-    justifyContent: "space-between",
+    display: "grid",
+    gridTemplateColumns: "repeat(4,1fr)",
+    gap: 5,
+    marginBottom: 5,
   },
 
   grid: {
     display: "grid",
     gridTemplateColumns: "repeat(5,1fr)",
+    gap: 5,
   },
+
+  num: {
+    padding: 12,
+    fontSize: 16,
+    background: "#222",
+    color: "#fff",
+  },
+
+  blue: { background: "#2563eb", color: "#fff", padding: 10 },
+  blueSub: { background: "#3b82f6", color: "#fff", padding: 10 },
+  red: { background: "#dc2626", color: "#fff", padding: 10 },
+  redSub: { background: "#ef4444", color: "#fff", padding: 10 },
 
   actions: {
     display: "flex",
     justifyContent: "space-around",
-    marginTop: 10,
+    marginTop: 5,
   },
 
   infoBox: {

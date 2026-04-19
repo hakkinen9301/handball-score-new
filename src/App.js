@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from "react";
-import html2canvas from "html2canvas";
 
 export default function App() {
   const [info, setInfo] = useState({ date: "", round: "", home: "", away: "" });
@@ -93,9 +92,14 @@ export default function App() {
     setStarted(false);
   };
 
-  // ★追加：画像保存（安全版）
+  // ★画像保存（CDN版）
   const saveImage = async () => {
-    const canvas = await html2canvas(document.body, {
+    if (!window.html2canvas) {
+      alert("画像保存の読み込みに失敗しました");
+      return;
+    }
+
+    const canvas = await window.html2canvas(document.body, {
       backgroundColor: "#000",
       scale: 2,
     });
@@ -256,3 +260,69 @@ export default function App() {
     </div>
   );
 }
+
+const styles = {
+  container:{
+    background:"#0a0a0a",
+    color:"#fff",
+    height:"100vh",
+    display:"flex",
+    flexDirection:"column",
+    fontFamily:"system-ui, -apple-system, sans-serif"
+  },
+
+  header:{position:"sticky",top:0,background:"#000",textAlign:"center",padding:8},
+  scoreRow:{display:"flex",justifyContent:"center",gap:6,fontSize:12},
+
+  timeline:{flex:1,overflowY:"auto",padding:8},
+
+  row:{
+    display:"grid",
+    gridTemplateColumns:"40px 90px 70px 90px 40px",
+    alignItems:"center",
+    height:22
+  },
+
+  c1:{textAlign:"center",color:"#60a5fa"},
+  c2:{textAlign:"right",color:"#60a5fa"},
+  c3:{textAlign:"center",fontWeight:"bold"},
+  c4:{textAlign:"left",color:"#f87171"},
+  c5:{textAlign:"center",color:"#f87171"},
+
+  section:{textAlign:"center",margin:"6px 0",color:"#aaa"},
+
+  bottom:{position:"sticky",bottom:0,background:"#000",padding:6},
+
+  stats:{marginBottom:4},
+  statRow:{display:"grid",gridTemplateColumns:"repeat(8,1fr)",fontSize:12,textAlign:"center"},
+
+  btnRow:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:4,marginBottom:4},
+
+  grid:{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:4},
+
+  num:{padding:12,fontSize:16,background:"#222",color:"#fff"},
+
+  blue:{background:"#2563eb",color:"#fff",padding:10},
+  blueSub:{background:"#3b82f6",color:"#fff",padding:10},
+  red:{background:"#dc2626",color:"#fff",padding:10},
+  redSub:{background:"#ef4444",color:"#fff",padding:10},
+
+  actions:{display:"flex",justifyContent:"space-around",marginTop:4},
+
+  startWrap:{
+    height:"100%",
+    display:"flex",
+    justifyContent:"center",
+    alignItems:"center"
+  },
+
+  startBox:{
+    display:"flex",
+    flexDirection:"column",
+    gap:12,
+    width:"80%"
+  },
+
+  bigInput:{padding:14,fontSize:16},
+  startBtn:{padding:14,fontSize:16,background:"#2563eb",color:"#fff"}
+};

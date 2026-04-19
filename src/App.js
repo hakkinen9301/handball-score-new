@@ -6,12 +6,41 @@ export default function App() {
   const [events, setEvents] = useState([]);
   const [mode, setMode] = useState(null);
 
+  // ★追加
+  const [history, setHistory] = useState([]);
+
   const bottomRef = useRef(null);
 
+  // 自動スクロール
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "auto" });
   }, [events]);
 
+  // ★初期ロード
+  useEffect(() => {
+    const saved = localStorage.getItem("current_match");
+    const hist = localStorage.getItem("match_history");
+
+    if (saved) {
+      const data = JSON.parse(saved);
+      setInfo(data.info);
+      setEvents(data.events);
+      setStarted(true);
+    }
+
+    if (hist) setHistory(JSON.parse(hist));
+  }, []);
+
+  // ★自動保存
+  useEffect(() => {
+    if (!started) return;
+    localStorage.setItem(
+      "current_match",
+      JSON.stringify({ info, events })
+    );
+  }, [events, info, started]);
+
+  // スコア計算
   const calcScore = (target) => {
     let b = 0, r = 0;
     let section = "前半";
@@ -29,6 +58,7 @@ export default function App() {
     return `${b}-${r}`;
   };
 
+  // イベント追加
   const addEvent = (team, type, number) => {
     setEvents(prev => {
       const list = [...prev, { team, type, number }];
@@ -49,10 +79,25 @@ export default function App() {
 
   const undo = () => setEvents(prev => prev.slice(0, -1));
 
+  // ★保存（履歴）
   const save = () => {
-    alert("保存機能は後で戻す");
+    const newHistory = [
+      { info, events, date: new Date().toISOString() },
+      ...history
+    ];
+    setHistory(newHistory);
+    localStorage.setItem("match_history", JSON.stringify(newHistory));
+    alert("履歴に保存しました");
   };
 
+  // ★履歴読込
+  const loadMatch = (match) => {
+    setInfo(match.info);
+    setEvents(match.events);
+    setStarted(true);
+  };
+
+  // 得点集計
   const goalStats = events.reduce((acc, e) => {
     if (e.type === "goal") {
       const key = `${e.team}-${e.number}`;
@@ -87,6 +132,20 @@ export default function App() {
             <input placeholder="チームB" style={styles.bigInput}
               onChange={(e)=>setInfo({...info,away:e.target.value})}/>
             <button style={styles.startBtn} onClick={()=>setStarted(true)}>試合開始</button>
+
+            {/* ★履歴 */}
+            {history.length > 0 && (
+              <div style={{marginTop:20}}>
+                <div>履歴</div>
+                {history.map((h,i)=>(
+                  <div key={i}>
+                    <button onClick={()=>loadMatch(h)}>
+                      {h.info.home} vs {h.info.away}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -143,31 +202,16 @@ export default function App() {
             <div style={styles.stats}>
               {[0,1].map(r=>(
                 <div key={r} style={styles.statRow}>
-                  {/* 青 */}
-                  {Array.from({length:4}).map((_,i)=>{
-                    const p = blueList[r*4 + i];
-                    return (
-                      <div key={`b-${i}`}>
-                        #{p?.num || ""}{" "}
-                        <span style={{color:"#60a5fa"}}>
-                          {p?.count || ""}
-                        </span>
-                      </div>
-                    );
-                  })}
-
-                  {/* 赤 */}
-                  {Array.from({length:4}).map((_,i)=>{
-                    const p = redList[r*4 + i];
-                    return (
-                      <div key={`r-${i}`}>
-                        #{p?.num || ""}{" "}
-                        <span style={{color:"#f87171"}}>
-                          {p?.count || ""}
-                        </span>
-                      </div>
-                    );
-                  })}
+                  {[...blueList.slice(r*4,(r+1)*4),
+                    ...redList.slice(r*4,(r+1)*4)
+                  ].map((p,i)=>(
+                    <div key={i}>
+                      #{p?.num || ""}{" "}
+                      <span style={{color:i<4?"#60a5fa":"#f87171"}}>
+                        {p?.count || ""}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               ))}
             </div>
@@ -197,7 +241,7 @@ export default function App() {
 
             <div style={styles.actions}>
               <button onClick={undo}>戻る</button>
-              <button onClick={save}>保存</button>
+              <button onClick={save}>履歴保存</button>
             </div>
           </div>
         </>
@@ -217,23 +261,22 @@ const styles = {
   },
 
   header:{position:"sticky",top:0,background:"#000",textAlign:"center",padding:8},
+
   scoreRow:{display:"flex",justifyContent:"center",gap:6,fontSize:12},
+
   timeline:{flex:1,overflowY:"auto",padding:8},
 
   row:{
     display:"grid",
-    gridTemplateColumns:"40px 90px 60px 90px 40px",
+    gridTemplateColumns:"40px 90px 70px 90px 40px",
     alignItems:"center",
-    height:22,
-    maxWidth:420,
-    width:"100%",
-    margin:"0 auto"
+    height:22
   },
 
   c1:{textAlign:"center",color:"#60a5fa",whiteSpace:"nowrap"},
-  c2:{textAlign:"right",color:"#60a5fa",whiteSpace:"nowrap"},
+  c2:{textAlign:"center",color:"#60a5fa",whiteSpace:"nowrap"},
   c3:{textAlign:"center",fontWeight:"bold"},
-  c4:{textAlign:"left",color:"#f87171",whiteSpace:"nowrap"},
+  c4:{textAlign:"center",color:"#f87171",whiteSpace:"nowrap"},
   c5:{textAlign:"center",color:"#f87171",whiteSpace:"nowrap"},
 
   section:{textAlign:"center",margin:"6px 0",color:"#aaa"},
@@ -256,8 +299,21 @@ const styles = {
 
   actions:{display:"flex",justifyContent:"space-around",marginTop:4},
 
-  startWrap:{height:"100%",display:"flex",justifyContent:"center",alignItems:"center"},
-  startBox:{display:"flex",flexDirection:"column",gap:12,width:"80%"},
+  startWrap:{
+    height:"100%",
+    display:"flex",
+    justifyContent:"center",
+    alignItems:"center"
+  },
+
+  startBox:{
+    display:"flex",
+    flexDirection:"column",
+    gap:12,
+    width:"80%"
+  },
+
   bigInput:{padding:14,fontSize:16},
+
   startBtn:{padding:14,fontSize:16,background:"#2563eb",color:"#fff"}
 };

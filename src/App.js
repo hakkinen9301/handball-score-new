@@ -1,33 +1,34 @@
 import { useState, useRef, useEffect } from "react";
+import html2canvas from "html2canvas";
 
 export default function App() {
   const [info, setInfo] = useState({ date: "", round: "", home: "", away: "" });
   const [started, setStarted] = useState(false);
   const [events, setEvents] = useState([]);
   const [mode, setMode] = useState(null);
+  const [history, setHistory] = useState([]);
 
   const bottomRef = useRef(null);
+  const captureRef = useRef(null);
 
-  // 自動スクロール
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "auto" });
   }, [events]);
 
-  // スコア計算
-  const calcScore = (target) => {
-    let b = 0, r = 0;
-    let section = "前半";
+  useEffect(() => {
+    const saved = localStorage.getItem("matches");
+    if (saved) setHistory(JSON.parse(saved));
+  }, []);
 
+  // スコア
+  const calcScore = () => {
+    let b = 0, r = 0;
     events.forEach(e => {
-      if (e.type === "section") section = e.label;
       if (e.type === "goal") {
-        if (target === "total" || target === section) {
-          if (e.team === "blue") b++;
-          if (e.team === "red") r++;
-        }
+        if (e.team === "blue") b++;
+        if (e.team === "red") r++;
       }
     });
-
     return `${b}-${r}`;
   };
 
@@ -36,7 +37,6 @@ export default function App() {
     setEvents(prev => {
       const list = [...prev, { team, type, number }];
       let b = 0, r = 0;
-
       return list.map(e => {
         if (e.type === "goal") {
           if (e.team === "blue") b++;
@@ -47,39 +47,47 @@ export default function App() {
     });
   };
 
-  const addSection = (label) =>
-    setEvents(prev => [...prev, { type: "section", label }]);
-
   const undo = () => setEvents(prev => prev.slice(0, -1));
 
-  // 保存（ダミー）
-  const save = () => {
-    alert("保存機能は後で戻す");
+  // ■ 保存（履歴＋画像）
+  const save = async () => {
+    try {
+      // 履歴保存
+      const newHistory = [
+        { info, events, score: calcScore(), id: Date.now() },
+        ...history
+      ];
+      setHistory(newHistory);
+      localStorage.setItem("matches", JSON.stringify(newHistory));
+
+      // 画像保存
+      const canvas = await html2canvas(captureRef.current, {
+        backgroundColor: "#0a0a0a",
+        scale: 2
+      });
+
+      const link = document.createElement("a");
+      link.download = "score.png";
+      link.href = canvas.toDataURL();
+      link.click();
+
+    } catch (e) {
+      alert("画像保存に失敗（履歴は保存済み）");
+    }
   };
 
-  // 得点集計
-  const goalStats = events.reduce((acc, e) => {
-    if (e.type === "goal") {
-      const key = `${e.team}-${e.number}`;
-      acc[key] = (acc[key] || 0) + 1;
-    }
-    return acc;
-  }, {});
-
-  const makeList = (team) =>
-    Object.entries(goalStats)
-      .filter(([k]) => k.startsWith(team))
-      .map(([k, v]) => ({ num: Number(k.split("-")[1]), count: v }))
-      .sort((a, b) => a.num - b.num)
-      .slice(0, 8);
-
-  const blueList = makeList("blue");
-  const redList = makeList("red");
+  const loadMatch = (m) => {
+    setInfo(m.info);
+    setEvents(m.events);
+    setStarted(true);
+  };
 
   const numbers = Array.from({ length: 15 }, (_, i) => i + 1);
 
   return (
     <div style={styles.container}>
+
+      {/* ■ 開始前 */}
       {!started && (
         <div style={styles.startWrap}>
           <div style={styles.startBox}>
@@ -92,76 +100,62 @@ export default function App() {
             <input placeholder="チームB" style={styles.bigInput}
               onChange={(e)=>setInfo({...info,away:e.target.value})}/>
             <button style={styles.startBtn} onClick={()=>setStarted(true)}>試合開始</button>
+
+            {/* 履歴一覧 */}
+            {history.length > 0 && (
+              <div style={{marginTop:20}}>
+                <div>履歴</div>
+                {history.map(h=>(
+                  <div key={h.id} onClick={()=>loadMatch(h)} style={styles.historyItem}>
+                    {h.info.date} {h.info.home} vs {h.info.away} ({h.score})
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
 
+      {/* ■ 試合画面 */}
       {started && (
         <>
-          <div style={styles.header}>
-            <div>{info.date} {info.round}</div>
-            <div>{info.home} vs {info.away}</div>
-
-            <div style={styles.scoreRow}>
-              <button onClick={()=>addSection("前半")}>前半</button>
-              <span>{calcScore("前半")}</span>
-              <button onClick={()=>addSection("後半")}>後半</button>
-              <span>{calcScore("後半")}</span>
-              <button onClick={()=>addSection("試合終了")}>終了</button>
-              <span>{calcScore("total")}</span>
+          <div ref={captureRef}>
+            <div style={styles.header}>
+              <div>{info.date} {info.round}</div>
+              <div>{info.home} vs {info.away}</div>
+              <div style={{fontSize:18, fontWeight:"bold"}}>{calcScore()}</div>
             </div>
-          </div>
 
-          <div style={styles.timeline}>
-            {events.map((e,i)=>{
-              if(e.type==="section"){
-                return <div key={i} style={styles.section}>ーー {e.label} ーー</div>
-              }
+            <div style={styles.timeline}>
+              {events.map((e,i)=>{
+                const mark =
+                  e.type==="goal" ? (e.team==="blue"?"🔵":"🔴") :
+                  e.type==="miss" ? "❌" :
+                  e.type==="out" ? "⛔" : "↩";
 
-              const mark =
-                e.type==="goal" ? (e.team==="blue"?"🔵":"🔴") :
-                e.type==="miss" ? "❌" :
-                e.type==="out" ? "⛔" : "↩";
-
-              return(
-                <div key={i} style={styles.row}>
-                  <div style={styles.c1}>
-                    {e.team==="blue" && (e.type==="out"||e.type==="in") && `#${e.number} ${mark}`}
+                return(
+                  <div key={i} style={styles.row}>
+                    <div style={styles.c1}>
+                      {e.team==="blue" && (e.type==="out"||e.type==="in") && `#${e.number} ${mark}`}
+                    </div>
+                    <div style={styles.c2}>
+                      {e.team==="blue" && (e.type==="goal"||e.type==="miss") && `#${e.number} ${mark}`}
+                    </div>
+                    <div style={styles.c3}>{e.score}</div>
+                    <div style={styles.c4}>
+                      {e.team==="red" && (e.type==="goal"||e.type==="miss") && `${mark} #${e.number}`}
+                    </div>
+                    <div style={styles.c5}>
+                      {e.team==="red" && (e.type==="out"||e.type==="in") && `${mark} #${e.number}`}
+                    </div>
                   </div>
-                  <div style={styles.c2}>
-                    {e.team==="blue" && (e.type==="goal"||e.type==="miss") && `#${e.number} ${mark}`}
-                  </div>
-                  <div style={styles.c3}>{e.score}</div>
-                  <div style={styles.c4}>
-                    {e.team==="red" && (e.type==="goal"||e.type==="miss") && `${mark} #${e.number}`}
-                  </div>
-                  <div style={styles.c5}>
-                    {e.team==="red" && (e.type==="out"||e.type==="in") && `${mark} #${e.number}`}
-                  </div>
-                </div>
-              )
-            })}
-            <div ref={bottomRef}/>
+                )
+              })}
+              <div ref={bottomRef}/>
+            </div>
           </div>
 
           <div style={styles.bottom}>
-            <div style={styles.stats}>
-              {[0,1].map(r=>(
-                <div key={r} style={styles.statRow}>
-                  {[...blueList.slice(r*4,(r+1)*4),
-                    ...redList.slice(r*4,(r+1)*4)
-                  ].map((p,i)=>(
-                    <div key={i}>
-                      #{p?.num || ""}{" "}
-                      <span style={{color:i<4?"#60a5fa":"#f87171"}}>
-                        {p?.count || ""}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              ))}
-            </div>
-
             <div style={styles.btnRow}>
               <button style={styles.blue} onClick={()=>setMode("blue-goal")}>青G</button>
               <button style={styles.blueSub} onClick={()=>setMode("blue-miss")}>青M</button>
@@ -187,7 +181,7 @@ export default function App() {
 
             <div style={styles.actions}>
               <button onClick={undo}>戻る</button>
-              <button onClick={save}>保存</button>
+              <button onClick={save}>保存＋画像</button>
             </div>
           </div>
         </>
@@ -197,69 +191,27 @@ export default function App() {
 }
 
 const styles = {
-  container:{
-    background:"#0a0a0a",
-    color:"#fff",
-    height:"100vh",
-    display:"flex",
-    flexDirection:"column",
-    fontFamily:"system-ui, -apple-system, sans-serif"
-  },
-
-  header:{position:"sticky",top:0,background:"#000",textAlign:"center",padding:8},
-
-  scoreRow:{display:"flex",justifyContent:"center",gap:6,fontSize:12},
-
-  timeline:{flex:1,overflowY:"auto",padding:8},
-
-  row:{
-    display:"grid",
-    gridTemplateColumns:"40px 90px 60px 90px 40px",
-    alignItems:"center",
-    height:22
-  },
-
-  c1:{textAlign:"center",color:"#60a5fa"},
+  container:{background:"#0a0a0a",color:"#fff",height:"100vh",display:"flex",flexDirection:"column",fontFamily:"system-ui"},
+  header:{textAlign:"center",padding:8},
+  timeline:{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",alignItems:"center"},
+  row:{display:"grid",gridTemplateColumns:"50px 100px 60px 100px 50px",width:"100%",maxWidth:420},
+  c1:{textAlign:"center",color:"#60a5fa",whiteSpace:"nowrap"},
   c2:{textAlign:"right",color:"#60a5fa"},
-  c3:{textAlign:"center",fontWeight:"bold"},
+  c3:{textAlign:"center"},
   c4:{textAlign:"left",color:"#f87171"},
   c5:{textAlign:"center",color:"#f87171"},
-
-  section:{textAlign:"center",margin:"6px 0",color:"#aaa"},
-
-  bottom:{position:"sticky",bottom:0,background:"#000",padding:6},
-
-  stats:{marginBottom:4},
-  statRow:{display:"grid",gridTemplateColumns:"repeat(8,1fr)",fontSize:12,textAlign:"center"},
-
-  btnRow:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:4,marginBottom:4},
-
+  bottom:{background:"#000",padding:6},
+  btnRow:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:4},
   grid:{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:4},
-
-  num:{padding:12,fontSize:16,background:"#222",color:"#fff"},
-
-  blue:{background:"#2563eb",color:"#fff",padding:10},
-  blueSub:{background:"#3b82f6",color:"#fff",padding:10},
-  red:{background:"#dc2626",color:"#fff",padding:10},
-  redSub:{background:"#ef4444",color:"#fff",padding:10},
-
-  actions:{display:"flex",justifyContent:"space-around",marginTop:4},
-
-  startWrap:{
-    height:"100%",
-    display:"flex",
-    justifyContent:"center",
-    alignItems:"center"
-  },
-
-  startBox:{
-    display:"flex",
-    flexDirection:"column",
-    gap:12,
-    width:"80%"
-  },
-
-  bigInput:{padding:14,fontSize:16},
-
-  startBtn:{padding:14,fontSize:16,background:"#2563eb",color:"#fff"}
+  num:{padding:12,background:"#222",color:"#fff"},
+  blue:{background:"#2563eb",color:"#fff"},
+  blueSub:{background:"#3b82f6",color:"#fff"},
+  red:{background:"#dc2626",color:"#fff"},
+  redSub:{background:"#ef4444",color:"#fff"},
+  actions:{display:"flex",justifyContent:"space-around"},
+  startWrap:{flex:1,display:"flex",justifyContent:"center",alignItems:"center"},
+  startBox:{display:"flex",flexDirection:"column",gap:10,width:"80%"},
+  bigInput:{padding:14},
+  startBtn:{padding:14,background:"#2563eb",color:"#fff"},
+  historyItem:{padding:6,borderBottom:"1px solid #333",cursor:"pointer"}
 };

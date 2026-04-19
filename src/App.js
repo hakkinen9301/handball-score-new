@@ -20,24 +20,11 @@ export default function App() {
     if (saved) setHistory(JSON.parse(saved));
   }, []);
 
-  // スコア
-  const calcScore = () => {
-    let b = 0, r = 0;
-    events.forEach(e => {
-      if (e.type === "goal") {
-        if (e.team === "blue") b++;
-        if (e.team === "red") r++;
-      }
-    });
-    return `${b}-${r}`;
-  };
-
-  // イベント追加
   const addEvent = (team, type, number) => {
-    setEvents(prev => {
+    setEvents((prev) => {
       const list = [...prev, { team, type, number }];
       let b = 0, r = 0;
-      return list.map(e => {
+      return list.map((e) => {
         if (e.type === "goal") {
           if (e.team === "blue") b++;
           if (e.team === "red") r++;
@@ -47,20 +34,17 @@ export default function App() {
     });
   };
 
-  const undo = () => setEvents(prev => prev.slice(0, -1));
+  const undo = () => setEvents((prev) => prev.slice(0, -1));
 
-  // ■ 保存（履歴＋画像）
   const save = async () => {
     try {
-      // 履歴保存
       const newHistory = [
-        { info, events, score: calcScore(), id: Date.now() },
+        { info, events, id: Date.now() },
         ...history
       ];
       setHistory(newHistory);
       localStorage.setItem("matches", JSON.stringify(newHistory));
 
-      // 画像保存
       const canvas = await html2canvas(captureRef.current, {
         backgroundColor: "#0a0a0a",
         scale: 2
@@ -70,24 +54,15 @@ export default function App() {
       link.download = "score.png";
       link.href = canvas.toDataURL();
       link.click();
-
-    } catch (e) {
-      alert("画像保存に失敗（履歴は保存済み）");
+    } catch {
+      alert("画像保存失敗（履歴は保存済み）");
     }
-  };
-
-  const loadMatch = (m) => {
-    setInfo(m.info);
-    setEvents(m.events);
-    setStarted(true);
   };
 
   const numbers = Array.from({ length: 15 }, (_, i) => i + 1);
 
   return (
     <div style={styles.container}>
-
-      {/* ■ 開始前 */}
       {!started && (
         <div style={styles.startWrap}>
           <div style={styles.startBox}>
@@ -101,13 +76,17 @@ export default function App() {
               onChange={(e)=>setInfo({...info,away:e.target.value})}/>
             <button style={styles.startBtn} onClick={()=>setStarted(true)}>試合開始</button>
 
-            {/* 履歴一覧 */}
             {history.length > 0 && (
               <div style={{marginTop:20}}>
-                <div>履歴</div>
                 {history.map(h=>(
-                  <div key={h.id} onClick={()=>loadMatch(h)} style={styles.historyItem}>
-                    {h.info.date} {h.info.home} vs {h.info.away} ({h.score})
+                  <div key={h.id}
+                    onClick={()=>{
+                      setInfo(h.info);
+                      setEvents(h.events);
+                      setStarted(true);
+                    }}
+                    style={styles.historyItem}>
+                    {h.info.date} {h.info.home} vs {h.info.away}
                   </div>
                 ))}
               </div>
@@ -116,14 +95,12 @@ export default function App() {
         </div>
       )}
 
-      {/* ■ 試合画面 */}
       {started && (
         <>
           <div ref={captureRef}>
             <div style={styles.header}>
               <div>{info.date} {info.round}</div>
               <div>{info.home} vs {info.away}</div>
-              <div style={{fontSize:18, fontWeight:"bold"}}>{calcScore()}</div>
             </div>
 
             <div style={styles.timeline}>
@@ -161,7 +138,6 @@ export default function App() {
               <button style={styles.blueSub} onClick={()=>setMode("blue-miss")}>青M</button>
               <button style={styles.red} onClick={()=>setMode("red-goal")}>赤G</button>
               <button style={styles.redSub} onClick={()=>setMode("red-miss")}>赤M</button>
-
               <button style={styles.blueSub} onClick={()=>setMode("blue-out")}>青OUT</button>
               <button style={styles.blueSub} onClick={()=>setMode("blue-in")}>青IN</button>
               <button style={styles.redSub} onClick={()=>setMode("red-out")}>赤OUT</button>
@@ -181,7 +157,7 @@ export default function App() {
 
             <div style={styles.actions}>
               <button onClick={undo}>戻る</button>
-              <button onClick={save}>保存＋画像</button>
+              <button onClick={save}>保存</button>
             </div>
           </div>
         </>
@@ -191,7 +167,7 @@ export default function App() {
 }
 
 const styles = {
-  container:{background:"#0a0a0a",color:"#fff",height:"100vh",display:"flex",flexDirection:"column",fontFamily:"system-ui"},
+  container:{background:"#0a0a0a",color:"#fff",height:"100vh",display:"flex",flexDirection:"column"},
   header:{textAlign:"center",padding:8},
   timeline:{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",alignItems:"center"},
   row:{display:"grid",gridTemplateColumns:"50px 100px 60px 100px 50px",width:"100%",maxWidth:420},
@@ -213,5 +189,5 @@ const styles = {
   startBox:{display:"flex",flexDirection:"column",gap:10,width:"80%"},
   bigInput:{padding:14},
   startBtn:{padding:14,background:"#2563eb",color:"#fff"},
-  historyItem:{padding:6,borderBottom:"1px solid #333",cursor:"pointer"}
+  historyItem:{padding:6,borderBottom:"1px solid #333"}
 };

@@ -143,16 +143,31 @@ export default function App() {
             <div style={styles.stats}>
               {[0,1].map(r=>(
                 <div key={r} style={styles.statRow}>
-                  {[...blueList.slice(r*4,(r+1)*4),
-                    ...redList.slice(r*4,(r+1)*4)
-                  ].map((p,i)=>(
-                    <div key={i}>
-                      #{p?.num || ""}{" "}
-                      <span style={{color:i<4?"#60a5fa":"#f87171"}}>
-                        {p?.count || ""}
-                      </span>
-                    </div>
-                  ))}
+                  {/* 青 */}
+                  {Array.from({length:4}).map((_,i)=>{
+                    const p = blueList[r*4 + i];
+                    return (
+                      <div key={`b-${i}`}>
+                        #{p?.num || ""}{" "}
+                        <span style={{color:"#60a5fa"}}>
+                          {p?.count || ""}
+                        </span>
+                      </div>
+                    );
+                  })}
+
+                  {/* 赤 */}
+                  {Array.from({length:4}).map((_,i)=>{
+                    const p = redList[r*4 + i];
+                    return (
+                      <div key={`r-${i}`}>
+                        #{p?.num || ""}{" "}
+                        <span style={{color:"#f87171"}}>
+                          {p?.count || ""}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
               ))}
             </div>
@@ -202,12 +217,9 @@ const styles = {
   },
 
   header:{position:"sticky",top:0,background:"#000",textAlign:"center",padding:8},
-
   scoreRow:{display:"flex",justifyContent:"center",gap:6,fontSize:12},
-
   timeline:{flex:1,overflowY:"auto",padding:8},
 
-  // ★ここだけ修正
   row:{
     display:"grid",
     gridTemplateColumns:"40px 90px 60px 90px 40px",
@@ -218,7 +230,6 @@ const styles = {
     margin:"0 auto"
   },
 
-  // ★ここだけ修正（nowrap追加）
   c1:{textAlign:"center",color:"#60a5fa",whiteSpace:"nowrap"},
   c2:{textAlign:"right",color:"#60a5fa",whiteSpace:"nowrap"},
   c3:{textAlign:"center",fontWeight:"bold"},
@@ -245,21 +256,8 @@ const styles = {
 
   actions:{display:"flex",justifyContent:"space-around",marginTop:4},
 
-  startWrap:{
-    height:"100%",
-    display:"flex",
-    justifyContent:"center",
-    alignItems:"center"
-  },
-
-  startBox:{
-    display:"flex",
-    flexDirection:"column",
-    gap:12,
-    width:"80%"
-  },
-
+  startWrap:{height:"100%",display:"flex",justifyContent:"center",alignItems:"center"},
+  startBox:{display:"flex",flexDirection:"column",gap:12,width:"80%"},
   bigInput:{padding:14,fontSize:16},
-
   startBtn:{padding:14,fontSize:16,background:"#2563eb",color:"#fff"}
 };

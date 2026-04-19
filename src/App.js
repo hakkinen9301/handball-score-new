@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from "react";
-import html2canvas from "html2canvas";
 
 export default function App() {
   const [info, setInfo] = useState({ date: "", round: "", home: "", away: "" });
@@ -8,21 +7,21 @@ export default function App() {
   const [mode, setMode] = useState(null);
 
   const bottomRef = useRef(null);
-  const captureRef = useRef(null);
 
+  // 自動スクロール
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "auto" });
   }, [events]);
 
-  // ■ スコア計算
-  const calcScore = (targetSection) => {
+  // スコア計算
+  const calcScore = (target) => {
     let b = 0, r = 0;
-    let current = "前半";
+    let section = "前半";
 
     events.forEach(e => {
-      if (e.type === "section") current = e.label;
+      if (e.type === "section") section = e.label;
       if (e.type === "goal") {
-        if (targetSection === "total" || current === targetSection) {
+        if (target === "total" || target === section) {
           if (e.team === "blue") b++;
           if (e.team === "red") r++;
         }
@@ -32,10 +31,12 @@ export default function App() {
     return `${b}-${r}`;
   };
 
+  // イベント追加
   const addEvent = (team, type, number) => {
     setEvents(prev => {
       const list = [...prev, { team, type, number }];
       let b = 0, r = 0;
+
       return list.map(e => {
         if (e.type === "goal") {
           if (e.team === "blue") b++;
@@ -51,18 +52,12 @@ export default function App() {
 
   const undo = () => setEvents(prev => prev.slice(0, -1));
 
-  const save = async () => {
-    const canvas = await html2canvas(captureRef.current, {
-      backgroundColor: "#0a0a0a",
-      scale: 2,
-    });
-    const link = document.createElement("a");
-    link.download = "score.png";
-    link.href = canvas.toDataURL();
-    link.click();
+  // 保存（ダミー）
+  const save = () => {
+    alert("保存機能は後で戻す");
   };
 
-  // ■ 得点者
+  // 得点集計
   const goalStats = events.reduce((acc, e) => {
     if (e.type === "goal") {
       const key = `${e.team}-${e.number}`;
@@ -103,7 +98,6 @@ export default function App() {
 
       {started && (
         <>
-          {/* ヘッダー */}
           <div style={styles.header}>
             <div>{info.date} {info.round}</div>
             <div>{info.home} vs {info.away}</div>
@@ -118,8 +112,7 @@ export default function App() {
             </div>
           </div>
 
-          {/* 履歴 */}
-          <div ref={captureRef} style={styles.timeline}>
+          <div style={styles.timeline}>
             {events.map((e,i)=>{
               if(e.type==="section"){
                 return <div key={i} style={styles.section}>ーー {e.label} ーー</div>
@@ -151,7 +144,6 @@ export default function App() {
             <div ref={bottomRef}/>
           </div>
 
-          {/* 下部 */}
           <div style={styles.bottom}>
             <div style={styles.stats}>
               {[0,1].map(r=>(
@@ -216,13 +208,7 @@ const styles = {
 
   header:{position:"sticky",top:0,background:"#000",textAlign:"center",padding:8},
 
-  scoreRow:{
-    display:"flex",
-    justifyContent:"center",
-    gap:6,
-    marginTop:4,
-    fontSize:12
-  },
+  scoreRow:{display:"flex",justifyContent:"center",gap:6,fontSize:12},
 
   timeline:{flex:1,overflowY:"auto",padding:8},
 
@@ -233,4 +219,47 @@ const styles = {
     height:22
   },
 
-  c
+  c1:{textAlign:"center",color:"#60a5fa"},
+  c2:{textAlign:"right",color:"#60a5fa"},
+  c3:{textAlign:"center",fontWeight:"bold"},
+  c4:{textAlign:"left",color:"#f87171"},
+  c5:{textAlign:"center",color:"#f87171"},
+
+  section:{textAlign:"center",margin:"6px 0",color:"#aaa"},
+
+  bottom:{position:"sticky",bottom:0,background:"#000",padding:6},
+
+  stats:{marginBottom:4},
+  statRow:{display:"grid",gridTemplateColumns:"repeat(8,1fr)",fontSize:12,textAlign:"center"},
+
+  btnRow:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:4,marginBottom:4},
+
+  grid:{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:4},
+
+  num:{padding:12,fontSize:16,background:"#222",color:"#fff"},
+
+  blue:{background:"#2563eb",color:"#fff",padding:10},
+  blueSub:{background:"#3b82f6",color:"#fff",padding:10},
+  red:{background:"#dc2626",color:"#fff",padding:10},
+  redSub:{background:"#ef4444",color:"#fff",padding:10},
+
+  actions:{display:"flex",justifyContent:"space-around",marginTop:4},
+
+  startWrap:{
+    height:"100%",
+    display:"flex",
+    justifyContent:"center",
+    alignItems:"center"
+  },
+
+  startBox:{
+    display:"flex",
+    flexDirection:"column",
+    gap:12,
+    width:"80%"
+  },
+
+  bigInput:{padding:14,fontSize:16},
+
+  startBtn:{padding:14,fontSize:16,background:"#2563eb",color:"#fff"}
+};

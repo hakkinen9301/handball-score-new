@@ -1,16 +1,40 @@
 import { useState, useRef, useEffect } from "react";
+import html2canvas from "html2canvas";
 
 export default function App() {
   const [info, setInfo] = useState({ date: "", round: "", home: "", away: "" });
   const [started, setStarted] = useState(false);
   const [events, setEvents] = useState([]);
   const [mode, setMode] = useState(null);
+  const [history, setHistory] = useState([]);
 
   const bottomRef = useRef(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "auto" });
   }, [events]);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("current_match");
+    const hist = localStorage.getItem("match_history");
+
+    if (saved) {
+      const data = JSON.parse(saved);
+      setInfo(data.info);
+      setEvents(data.events);
+      setStarted(true);
+    }
+
+    if (hist) setHistory(JSON.parse(hist));
+  }, []);
+
+  useEffect(() => {
+    if (!started) return;
+    localStorage.setItem(
+      "current_match",
+      JSON.stringify({ info, events })
+    );
+  }, [events, info, started]);
 
   const calcScore = (target) => {
     let b = 0, r = 0;
@@ -50,7 +74,36 @@ export default function App() {
   const undo = () => setEvents(prev => prev.slice(0, -1));
 
   const save = () => {
-    alert("保存機能は後で戻す");
+    const newHistory = [
+      { info, events, date: new Date().toISOString() },
+      ...history
+    ];
+    setHistory(newHistory);
+    localStorage.setItem("match_history", JSON.stringify(newHistory));
+    alert("履歴に保存しました");
+  };
+
+  const loadMatch = (match) => {
+    setInfo(match.info);
+    setEvents(match.events);
+    setStarted(true);
+  };
+
+  const resetToForm = () => {
+    setStarted(false);
+  };
+
+  // ★追加：画像保存（安全版）
+  const saveImage = async () => {
+    const canvas = await html2canvas(document.body, {
+      backgroundColor: "#000",
+      scale: 2,
+    });
+
+    const link = document.createElement("a");
+    link.download = "score.png";
+    link.href = canvas.toDataURL();
+    link.click();
   };
 
   const goalStats = events.reduce((acc, e) => {
@@ -87,6 +140,19 @@ export default function App() {
             <input placeholder="チームB" style={styles.bigInput}
               onChange={(e)=>setInfo({...info,away:e.target.value})}/>
             <button style={styles.startBtn} onClick={()=>setStarted(true)}>試合開始</button>
+
+            {history.length > 0 && (
+              <div style={{marginTop:20}}>
+                <div>履歴</div>
+                {history.map((h,i)=>(
+                  <div key={i}>
+                    <button onClick={()=>loadMatch(h)}>
+                      {h.info.home} vs {h.info.away}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -143,30 +209,13 @@ export default function App() {
             <div style={styles.stats}>
               {[0,1].map(r=>(
                 <div key={r} style={styles.statRow}>
-                  {/* 青 */}
                   {Array.from({length:4}).map((_,i)=>{
                     const p = blueList[r*4 + i];
-                    return (
-                      <div key={`b-${i}`}>
-                        #{p?.num || ""}{" "}
-                        <span style={{color:"#60a5fa"}}>
-                          {p?.count || ""}
-                        </span>
-                      </div>
-                    );
+                    return <div key={i}>#{p?.num||""} <span style={{color:"#60a5fa"}}>{p?.count||""}</span></div>
                   })}
-
-                  {/* 赤 */}
                   {Array.from({length:4}).map((_,i)=>{
                     const p = redList[r*4 + i];
-                    return (
-                      <div key={`r-${i}`}>
-                        #{p?.num || ""}{" "}
-                        <span style={{color:"#f87171"}}>
-                          {p?.count || ""}
-                        </span>
-                      </div>
-                    );
+                    return <div key={i}>#{p?.num||""} <span style={{color:"#f87171"}}>{p?.count||""}</span></div>
                   })}
                 </div>
               ))}
@@ -197,7 +246,9 @@ export default function App() {
 
             <div style={styles.actions}>
               <button onClick={undo}>戻る</button>
-              <button onClick={save}>保存</button>
+              <button onClick={save}>履歴保存</button>
+              <button onClick={resetToForm}>入力に戻る</button>
+              <button onClick={saveImage}>画像保存</button>
             </div>
           </div>
         </>
@@ -205,59 +256,3 @@ export default function App() {
     </div>
   );
 }
-
-const styles = {
-  container:{
-    background:"#0a0a0a",
-    color:"#fff",
-    height:"100vh",
-    display:"flex",
-    flexDirection:"column",
-    fontFamily:"system-ui, -apple-system, sans-serif"
-  },
-
-  header:{position:"sticky",top:0,background:"#000",textAlign:"center",padding:8},
-  scoreRow:{display:"flex",justifyContent:"center",gap:6,fontSize:12},
-  timeline:{flex:1,overflowY:"auto",padding:8},
-
-  row:{
-    display:"grid",
-    gridTemplateColumns:"40px 90px 60px 90px 40px",
-    alignItems:"center",
-    height:22,
-    maxWidth:420,
-    width:"100%",
-    margin:"0 auto"
-  },
-
-  c1:{textAlign:"center",color:"#60a5fa",whiteSpace:"nowrap"},
-  c2:{textAlign:"right",color:"#60a5fa",whiteSpace:"nowrap"},
-  c3:{textAlign:"center",fontWeight:"bold"},
-  c4:{textAlign:"left",color:"#f87171",whiteSpace:"nowrap"},
-  c5:{textAlign:"center",color:"#f87171",whiteSpace:"nowrap"},
-
-  section:{textAlign:"center",margin:"6px 0",color:"#aaa"},
-
-  bottom:{position:"sticky",bottom:0,background:"#000",padding:6},
-
-  stats:{marginBottom:4},
-  statRow:{display:"grid",gridTemplateColumns:"repeat(8,1fr)",fontSize:12,textAlign:"center"},
-
-  btnRow:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:4,marginBottom:4},
-
-  grid:{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:4},
-
-  num:{padding:12,fontSize:16,background:"#222",color:"#fff"},
-
-  blue:{background:"#2563eb",color:"#fff",padding:10},
-  blueSub:{background:"#3b82f6",color:"#fff",padding:10},
-  red:{background:"#dc2626",color:"#fff",padding:10},
-  redSub:{background:"#ef4444",color:"#fff",padding:10},
-
-  actions:{display:"flex",justifyContent:"space-around",marginTop:4},
-
-  startWrap:{height:"100%",display:"flex",justifyContent:"center",alignItems:"center"},
-  startBox:{display:"flex",flexDirection:"column",gap:12,width:"80%"},
-  bigInput:{padding:14,fontSize:16},
-  startBtn:{padding:14,fontSize:16,background:"#2563eb",color:"#fff"}
-};

@@ -29,10 +29,7 @@ export default function App() {
 
   useEffect(() => {
     if (!started) return;
-    localStorage.setItem(
-      "current_match",
-      JSON.stringify({ info, events })
-    );
+    localStorage.setItem("current_match", JSON.stringify({ info, events }));
   }, [events, info, started]);
 
   const calcScore = (target) => {
@@ -72,15 +69,13 @@ export default function App() {
 
   const undo = () => setEvents(prev => prev.slice(0, -1));
 
-  // ★履歴：同一試合は上書き
+  // ★履歴 上書き
   const save = () => {
     const key = `${info.date}_${info.round}_${info.home}_${info.away}`;
-
     const newHistory = [
       { key, info, events },
       ...history.filter(h => h.key !== key)
     ];
-
     setHistory(newHistory);
     localStorage.setItem("match_history", JSON.stringify(newHistory));
     alert("履歴に保存しました");
@@ -92,11 +87,9 @@ export default function App() {
     setStarted(true);
   };
 
-  const resetToForm = () => {
-    setStarted(false);
-  };
+  const resetToForm = () => setStarted(false);
 
-  // ★画像保存（UI壊さない版）
+  // ★画像保存
   const saveImage = async () => {
     if (!window.html2canvas) {
       alert("画像保存の読み込み失敗");
@@ -154,18 +147,11 @@ export default function App() {
               onChange={(e)=>setInfo({...info,away:e.target.value})}/>
             <button style={styles.startBtn} onClick={()=>setStarted(true)}>試合開始</button>
 
-            {history.length > 0 && (
-              <div style={{marginTop:20}}>
-                <div>履歴</div>
-                {history.map((h,i)=>(
-                  <div key={i}>
-                    <button onClick={()=>loadMatch(h)}>
-                      {h.info.date} {h.info.round} / {h.info.home} vs {h.info.away}
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
+            {history.map((h,i)=>(
+              <button key={i} onClick={()=>loadMatch(h)}>
+                {h.info.date} {h.info.round} / {h.info.home} vs {h.info.away}
+              </button>
+            ))}
           </div>
         </div>
       )}
@@ -219,4 +205,90 @@ export default function App() {
           </div>
 
           <div style={styles.bottom} id="bottom-area">
-            {/* ここ以下は一切変更なし */}
+            <div style={styles.btnRow}>
+              <button style={styles.blue} onClick={()=>setMode("blue-goal")}>青G</button>
+              <button style={styles.blueSub} onClick={()=>setMode("blue-miss")}>青M</button>
+              <button style={styles.red} onClick={()=>setMode("red-goal")}>赤G</button>
+              <button style={styles.redSub} onClick={()=>setMode("red-miss")}>赤M</button>
+
+              <button style={styles.blueSub} onClick={()=>setMode("blue-out")}>青OUT</button>
+              <button style={styles.blueSub} onClick={()=>setMode("blue-in")}>青IN</button>
+              <button style={styles.redSub} onClick={()=>setMode("red-out")}>赤OUT</button>
+              <button style={styles.redSub} onClick={()=>setMode("red-in")}>赤IN</button>
+            </div>
+
+            <div style={styles.grid}>
+              {numbers.map(n=>(
+                <button key={n} style={styles.num}
+                  onClick={()=>{
+                    if(!mode)return;
+                    const [t,ty]=mode.split("-");
+                    addEvent(t,ty,n);
+                  }}>{n}</button>
+              ))}
+            </div>
+
+            <div style={styles.actions}>
+              <button onClick={undo}>戻る</button>
+              <button onClick={save}>履歴保存</button>
+              <button onClick={resetToForm}>入力に戻る</button>
+              <button onClick={saveImage}>画像保存</button>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+const styles = {
+  container:{
+    background:"#0a0a0a",
+    color:"#fff",
+    height:"100vh",
+    display:"flex",
+    flexDirection:"column",
+    fontFamily:"system-ui, -apple-system, sans-serif"
+  },
+
+  header:{position:"sticky",top:0,background:"#000",textAlign:"center",padding:8},
+  scoreRow:{display:"flex",justifyContent:"center",gap:6,fontSize:12},
+
+  timeline:{flex:1,overflowY:"auto",padding:8},
+
+  row:{
+    display:"grid",
+    gridTemplateColumns:"40px 90px 70px 90px 40px",
+    alignItems:"center",
+    height:22,
+    whiteSpace:"nowrap"
+  },
+
+  c1:{textAlign:"center",color:"#60a5fa"},
+  c2:{textAlign:"right",color:"#60a5fa"},
+  c3:{textAlign:"center",fontWeight:"bold"},
+  c4:{textAlign:"left",color:"#f87171"},
+  c5:{textAlign:"center",color:"#f87171"},
+
+  section:{textAlign:"center",margin:"6px 0",color:"#aaa"},
+
+  bottom:{position:"sticky",bottom:0,background:"#000",padding:6},
+
+  btnRow:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:4,marginBottom:4},
+
+  grid:{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:4},
+
+  num:{padding:12,fontSize:16,background:"#222",color:"#fff"},
+
+  blue:{background:"#2563eb",color:"#fff",padding:10},
+  blueSub:{background:"#3b82f6",color:"#fff",padding:10},
+  red:{background:"#dc2626",color:"#fff",padding:10},
+  redSub:{background:"#ef4444",color:"#fff",padding:10},
+
+  actions:{display:"flex",justifyContent:"space-around",marginTop:4},
+
+  startWrap:{height:"100%",display:"flex",justifyContent:"center",alignItems:"center"},
+  startBox:{display:"flex",flexDirection:"column",gap:12,width:"80%"},
+  bigInput:{padding:14,fontSize:16},
+  startBtn:{padding:14,fontSize:16,background:"#2563eb",color:"#fff"}
+};

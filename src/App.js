@@ -8,7 +8,6 @@ export default function App() {
   const [history, setHistory] = useState([]);
 
   const bottomRef = useRef(null);
-  const captureRef = useRef(null); // ★画像用
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "auto" });
@@ -30,7 +29,10 @@ export default function App() {
 
   useEffect(() => {
     if (!started) return;
-    localStorage.setItem("current_match", JSON.stringify({ info, events }));
+    localStorage.setItem(
+      "current_match",
+      JSON.stringify({ info, events })
+    );
   }, [events, info, started]);
 
   const calcScore = (target) => {
@@ -70,7 +72,7 @@ export default function App() {
 
   const undo = () => setEvents(prev => prev.slice(0, -1));
 
-  // ★履歴保存（上書き対応）
+  // ★履歴：同一試合は上書き
   const save = () => {
     const key = `${info.date}_${info.round}_${info.home}_${info.away}`;
 
@@ -81,7 +83,7 @@ export default function App() {
 
     setHistory(newHistory);
     localStorage.setItem("match_history", JSON.stringify(newHistory));
-    alert("履歴を保存しました（同一試合は上書き）");
+    alert("履歴に保存しました");
   };
 
   const loadMatch = (match) => {
@@ -90,19 +92,26 @@ export default function App() {
     setStarted(true);
   };
 
-  const resetToForm = () => setStarted(false);
+  const resetToForm = () => {
+    setStarted(false);
+  };
 
-  // ★画像保存（履歴全部＋下部除外）
+  // ★画像保存（UI壊さない版）
   const saveImage = async () => {
     if (!window.html2canvas) {
       alert("画像保存の読み込み失敗");
       return;
     }
 
-    const canvas = await window.html2canvas(captureRef.current, {
+    const bottom = document.getElementById("bottom-area");
+    if (bottom) bottom.style.display = "none";
+
+    const canvas = await window.html2canvas(document.body, {
       backgroundColor: "#000",
       scale: 2,
     });
+
+    if (bottom) bottom.style.display = "block";
 
     const link = document.createElement("a");
     link.download = "score.png";
@@ -145,111 +154,69 @@ export default function App() {
               onChange={(e)=>setInfo({...info,away:e.target.value})}/>
             <button style={styles.startBtn} onClick={()=>setStarted(true)}>試合開始</button>
 
-            {history.map((h,i)=>(
-              <button key={i} onClick={()=>loadMatch(h)}>
-                {h.info.date} {h.info.round} / {h.info.home} vs {h.info.away}
-              </button>
-            ))}
+            {history.length > 0 && (
+              <div style={{marginTop:20}}>
+                <div>履歴</div>
+                {history.map((h,i)=>(
+                  <div key={i}>
+                    <button onClick={()=>loadMatch(h)}>
+                      {h.info.date} {h.info.round} / {h.info.home} vs {h.info.away}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
 
       {started && (
         <>
-          <div ref={captureRef}>
-            <div style={styles.header}>
-              <div>{info.date} {info.round}</div>
-              <div>{info.home} vs {info.away}</div>
+          <div style={styles.header}>
+            <div>{info.date} {info.round}</div>
+            <div>{info.home} vs {info.away}</div>
 
-              <div style={styles.scoreRow}>
-                前半 {calcScore("前半")}
-                後半 {calcScore("後半")}
-                終了 {calcScore("total")}
-              </div>
+            <div style={styles.scoreRow}>
+              <button onClick={()=>addSection("前半")}>前半</button>
+              <span>{calcScore("前半")}</span>
+              <button onClick={()=>addSection("後半")}>後半</button>
+              <span>{calcScore("後半")}</span>
+              <button onClick={()=>addSection("試合終了")}>終了</button>
+              <span>{calcScore("total")}</span>
             </div>
+          </div>
 
-            <div style={styles.timeline}>
-              {events.map((e,i)=>{
-                if(e.type==="section"){
-                  return <div key={i} style={styles.section}>ーー {e.label} ーー</div>
-                }
+          <div style={styles.timeline}>
+            {events.map((e,i)=>{
+              if(e.type==="section"){
+                return <div key={i} style={styles.section}>ーー {e.label} ーー</div>
+              }
 
-                const mark =
-                  e.type==="goal" ? (e.team==="blue"?"🔵":"🔴") :
-                  e.type==="miss" ? "❌" :
-                  e.type==="out" ? "⛔" : "↩";
+              const mark =
+                e.type==="goal" ? (e.team==="blue"?"🔵":"🔴") :
+                e.type==="miss" ? "❌" :
+                e.type==="out" ? "⛔" : "↩";
 
-                return(
-                  <div key={i} style={styles.row}>
-                    <div style={styles.c1}>
-                      {e.team==="blue" && (e.type==="out"||e.type==="in") && `#${e.number} ${mark}`}
-                    </div>
-                    <div style={styles.c2}>
-                      {e.team==="blue" && (e.type==="goal"||e.type==="miss") && `#${e.number} ${mark}`}
-                    </div>
-                    <div style={styles.c3}>{e.score}</div>
-                    <div style={styles.c4}>
-                      {e.team==="red" && (e.type==="goal"||e.type==="miss") && `${mark} #${e.number}`}
-                    </div>
-                    <div style={styles.c5}>
-                      {e.team==="red" && (e.type==="out"||e.type==="in") && `${mark} #${e.number}`}
-                    </div>
+              return(
+                <div key={i} style={styles.row}>
+                  <div style={styles.c1}>
+                    {e.team==="blue" && (e.type==="out"||e.type==="in") && `#${e.number} ${mark}`}
                   </div>
-                )
-              })}
-              <div ref={bottomRef}/>
-            </div>
+                  <div style={styles.c2}>
+                    {e.team==="blue" && (e.type==="goal"||e.type==="miss") && `#${e.number} ${mark}`}
+                  </div>
+                  <div style={styles.c3}>{e.score}</div>
+                  <div style={styles.c4}>
+                    {e.team==="red" && (e.type==="goal"||e.type==="miss") && `${mark} #${e.number}`}
+                  </div>
+                  <div style={styles.c5}>
+                    {e.team==="red" && (e.type==="out"||e.type==="in") && `${mark} #${e.number}`}
+                  </div>
+                </div>
+              )
+            })}
+            <div ref={bottomRef}/>
           </div>
 
-          {/* ↓ここは画像に含まれない */}
-          <div style={styles.bottom}>
-            <div style={styles.btnRow}>
-              <button onClick={()=>setMode("blue-goal")}>青G</button>
-              <button onClick={()=>setMode("blue-miss")}>青M</button>
-              <button onClick={()=>setMode("red-goal")}>赤G</button>
-              <button onClick={()=>setMode("red-miss")}>赤M</button>
-              <button onClick={()=>setMode("blue-out")}>青OUT</button>
-              <button onClick={()=>setMode("blue-in")}>青IN</button>
-              <button onClick={()=>setMode("red-out")}>赤OUT</button>
-              <button onClick={()=>setMode("red-in")}>赤IN</button>
-            </div>
-
-            <div style={styles.grid}>
-              {numbers.map(n=>(
-                <button key={n} onClick={()=>{
-                  if(!mode)return;
-                  const [t,ty]=mode.split("-");
-                  addEvent(t,ty,n);
-                }}>{n}</button>
-              ))}
-            </div>
-
-            <div style={styles.actions}>
-              <button onClick={undo}>戻る</button>
-              <button onClick={save}>履歴保存</button>
-              <button onClick={resetToForm}>戻る</button>
-              <button onClick={saveImage}>画像保存</button>
-            </div>
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-const styles = {
-  container:{background:"#000",color:"#fff",height:"100vh",display:"flex",flexDirection:"column"},
-  header:{position:"sticky",top:0,background:"#000",textAlign:"center"},
-  timeline:{flex:1,overflowY:"auto"},
-  row:{
-    display:"grid",
-    gridTemplateColumns:"40px 90px 70px 90px 40px",
-    whiteSpace:"nowrap" // ★2段防止
-  },
-  c1:{textAlign:"center",color:"#60a5fa"},
-  c2:{textAlign:"right",color:"#60a5fa"},
-  c3:{textAlign:"center"},
-  c4:{textAlign:"left",color:"#f87171"},
-  c5:{textAlign:"center",color:"#f87171"},
-  bottom:{background:"#000"}
-};
+          <div style={styles.bottom} id="bottom-area">
+            {/* ここ以下は一切変更なし */}

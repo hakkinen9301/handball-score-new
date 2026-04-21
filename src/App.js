@@ -14,16 +14,27 @@ export default function App() {
   }, [events]);
 
   useEffect(() => {
+    const saved = localStorage.getItem("current_match");
     const hist = localStorage.getItem("match_history");
+
+    if (saved) {
+      const data = JSON.parse(saved);
+      setInfo(data.info);
+      setEvents(data.events);
+      setStarted(true);
+    }
+
     if (hist) setHistory(JSON.parse(hist));
   }, []);
 
   useEffect(() => {
     if (!started) return;
-    localStorage.setItem("current_match", JSON.stringify({ info, events }));
+    localStorage.setItem(
+      "current_match",
+      JSON.stringify({ info, events })
+    );
   }, [events, info, started]);
 
-  // ===== スコア =====
   const calcScore = (target) => {
     let b = 0, r = 0;
     let section = "前半";
@@ -37,10 +48,10 @@ export default function App() {
         }
       }
     });
+
     return `${b}-${r}`;
   };
 
-  // ===== イベント追加 =====
   const addEvent = (team, type, number) => {
     setEvents(prev => {
       const list = [...prev, { team, type, number }];
@@ -56,40 +67,19 @@ export default function App() {
     });
   };
 
-  const addSection = (label) => {
+  const addSection = (label) =>
     setEvents(prev => [...prev, { type: "section", label }]);
-
-    // ★試合終了で自動保存
-    if (label === "試合終了") autoSave();
-  };
 
   const undo = () => setEvents(prev => prev.slice(0, -1));
 
-  // ===== 履歴 =====
-  const makeKey = () =>
-    `${info.date}_${info.round}_${info.home}_${info.away}`;
-
-  const autoSave = () => {
-    const key = makeKey();
-    const newHistory = [
-      { key, info, events },
-      ...history.filter(h => h.key !== key)
-    ].sort((a, b) => (a.info.date < b.info.date ? 1 : -1));
-
-    setHistory(newHistory);
-    localStorage.setItem("match_history", JSON.stringify(newHistory));
-  };
-
   const save = () => {
-    autoSave();
-    alert("履歴に保存しました");
-  };
-
-  const deleteHistory = (key) => {
-    if (!window.confirm("削除しますか？")) return;
-    const newHistory = history.filter(h => h.key !== key);
+    const newHistory = [
+      { info, events, date: new Date().toISOString() },
+      ...history
+    ];
     setHistory(newHistory);
     localStorage.setItem("match_history", JSON.stringify(newHistory));
+    alert("履歴に保存しました");
   };
 
   const loadMatch = (match) => {
@@ -99,61 +89,27 @@ export default function App() {
   };
 
   const resetToForm = () => {
-    localStorage.removeItem("current_match");
-    setEvents([]);
     setStarted(false);
   };
 
-  // ===== 画像保存（前半・後半）=====
+  // ★画像保存（CDN版）
   const saveImage = async () => {
     if (!window.html2canvas) {
-      alert("html2canvasが未読込");
+      alert("画像保存の読み込みに失敗しました");
       return;
     }
 
-    const sections = ["前半", "後半"];
+    const canvas = await window.html2canvas(document.body, {
+      backgroundColor: "#000",
+      scale: 2,
+    });
 
-    for (let sec of sections) {
-      let section = "前半";
-      const filtered = events.filter(e => {
-        if (e.type === "section") section = e.label;
-        return section === sec && e.type !== "section";
-      });
-
-      const div = document.createElement("div");
-      div.style.background = "#000";
-      div.style.color = "#fff";
-      div.style.padding = "40px 20px"; // 余白
-
-      div.innerHTML = `
-        <div style="text-align:center;margin-bottom:10px">
-          ${info.date} ${info.round}<br/>
-          ${info.home} vs ${info.away}<br/>
-          ${sec} ${calcScore(sec)}
-        </div>
-        ${filtered.map(e=>{
-          const mark =
-            e.type==="goal"?(e.team==="blue"?"🔵":"🔴"):
-            e.type==="miss"?"❌":
-            e.type==="out"?"⛔":"↩";
-
-          return `<div>${e.team==="blue"?"#"+e.number:""} ${mark} ${e.team==="red"?"#"+e.number:""} ${e.score}</div>`;
-        }).join("")}
-      `;
-
-      document.body.appendChild(div);
-
-      const canvas = await window.html2canvas(div, { scale: 2 });
-      const link = document.createElement("a");
-      link.download = `${sec}.png`;
-      link.href = canvas.toDataURL();
-      link.click();
-
-      document.body.removeChild(div);
-    }
+    const link = document.createElement("a");
+    link.download = "score.png";
+    link.href = canvas.toDataURL();
+    link.click();
   };
 
-  // ===== 得点集計（混在防止済み）=====
   const goalStats = events.reduce((acc, e) => {
     if (e.type === "goal") {
       const key = `${e.team}-${e.number}`;
@@ -189,14 +145,18 @@ export default function App() {
               onChange={(e)=>setInfo({...info,away:e.target.value})}/>
             <button style={styles.startBtn} onClick={()=>setStarted(true)}>試合開始</button>
 
-            {history.map((h,i)=>(
-              <div key={i}>
-                <button onClick={()=>loadMatch(h)}>
-                  {h.info.date} / {h.info.round} / {h.info.home} vs {h.info.away}
-                </button>
-                <button onClick={()=>deleteHistory(h.key)}>削除</button>
+            {history.length > 0 && (
+              <div style={{marginTop:20}}>
+                <div>履歴</div>
+                {history.map((h,i)=>(
+                  <div key={i}>
+                    <button onClick={()=>loadMatch(h)}>
+                      {h.info.home} vs {h.info.away}
+                    </button>
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
           </div>
         </div>
       )}
@@ -301,4 +261,68 @@ export default function App() {
   );
 }
 
-const styles = { /* ←ここはあなたの元コードそのまま（省略せず使ってOK） */ };
+const styles = {
+  container:{
+    background:"#0a0a0a",
+    color:"#fff",
+    height:"100vh",
+    display:"flex",
+    flexDirection:"column",
+    fontFamily:"system-ui, -apple-system, sans-serif"
+  },
+
+  header:{position:"sticky",top:0,background:"#000",textAlign:"center",padding:8},
+  scoreRow:{display:"flex",justifyContent:"center",gap:6,fontSize:12},
+
+  timeline:{flex:1,overflowY:"auto",padding:8},
+
+  row:{
+    display:"grid",
+    gridTemplateColumns:"40px 90px 70px 90px 40px",
+    alignItems:"center",
+    height:22
+  },
+
+  c1:{textAlign:"center",color:"#60a5fa"},
+  c2:{textAlign:"right",color:"#60a5fa"},
+  c3:{textAlign:"center",fontWeight:"bold"},
+  c4:{textAlign:"left",color:"#f87171"},
+  c5:{textAlign:"center",color:"#f87171"},
+
+  section:{textAlign:"center",margin:"6px 0",color:"#aaa"},
+
+  bottom:{position:"sticky",bottom:0,background:"#000",padding:6},
+
+  stats:{marginBottom:4},
+  statRow:{display:"grid",gridTemplateColumns:"repeat(8,1fr)",fontSize:12,textAlign:"center"},
+
+  btnRow:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:4,marginBottom:4},
+
+  grid:{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:4},
+
+  num:{padding:12,fontSize:16,background:"#222",color:"#fff"},
+
+  blue:{background:"#2563eb",color:"#fff",padding:10},
+  blueSub:{background:"#3b82f6",color:"#fff",padding:10},
+  red:{background:"#dc2626",color:"#fff",padding:10},
+  redSub:{background:"#ef4444",color:"#fff",padding:10},
+
+  actions:{display:"flex",justifyContent:"space-around",marginTop:4},
+
+  startWrap:{
+    height:"100%",
+    display:"flex",
+    justifyContent:"center",
+    alignItems:"center"
+  },
+
+  startBox:{
+    display:"flex",
+    flexDirection:"column",
+    gap:12,
+    width:"80%"
+  },
+
+  bigInput:{padding:14,fontSize:16},
+  startBtn:{padding:14,fontSize:16,background:"#2563eb",color:"#fff"}
+};

@@ -104,7 +104,7 @@ export default function App() {
     setStarted(false);
   };
 
-  // ★画像保存（修正版）
+  // ★ここだけ変更
   const saveImage = async () => {
     if (!window.html2canvas) {
       alert("html2canvas未読込");
@@ -124,26 +124,43 @@ export default function App() {
     header.innerHTML = `
       ${info.date} / ${info.round}<br/>
       ${info.home} vs ${info.away}<br/>
-      TOTAL ${calcScore("total")}
+      前半 ${calcScore("前半")}　
+      後半 ${calcScore("後半")}　
+      終了 ${calcScore("total")}
     `;
     wrapper.appendChild(header);
 
-    // stats
-    const statsDiv = document.createElement("div");
-    statsDiv.style.display = "grid";
-    statsDiv.style.gridTemplateColumns = "repeat(8,1fr)";
-    statsDiv.style.fontSize = "12px";
-    statsDiv.style.marginBottom = "12px";
+    // stats（青左・赤右）
+    const statsWrap = document.createElement("div");
+    statsWrap.style.marginBottom = "12px";
 
-    [...blueList, ...redList].forEach((p, i) => {
-      const d = document.createElement("div");
-      d.style.textAlign = "center";
-      d.style.color = i < blueList.length ? "#60a5fa" : "#f87171";
-      d.innerText = `#${p.num} ${p.count}`;
-      statsDiv.appendChild(d);
-    });
+    for (let r = 0; r < 2; r++) {
+      const row = document.createElement("div");
+      row.style.display = "grid";
+      row.style.gridTemplateColumns = "repeat(8,1fr)";
+      row.style.fontSize = "12px";
+      row.style.textAlign = "center";
 
-    wrapper.appendChild(statsDiv);
+      for (let i = 0; i < 4; i++) {
+        const p = blueList[r * 4 + i];
+        const d = document.createElement("div");
+        d.style.color = "#60a5fa";
+        d.innerText = p ? `#${p.num} ${p.count}` : "";
+        row.appendChild(d);
+      }
+
+      for (let i = 0; i < 4; i++) {
+        const p = redList[r * 4 + i];
+        const d = document.createElement("div");
+        d.style.color = "#f87171";
+        d.innerText = p ? `#${p.num} ${p.count}` : "";
+        row.appendChild(d);
+      }
+
+      statsWrap.appendChild(row);
+    }
+
+    wrapper.appendChild(statsWrap);
 
     // 履歴
     events.forEach(e => {

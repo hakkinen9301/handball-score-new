@@ -1,5 +1,3 @@
-// ★変更箇所にはコメント入れてる（それ以外は触ってない）
-
 import { useState, useRef, useEffect } from "react";
 
 export default function App() {
@@ -20,23 +18,29 @@ export default function App() {
     const hist = localStorage.getItem("match_history");
 
     if (saved) {
-      const data = JSON.parse(saved);
-      setInfo(data.info);
-      setEvents(data.events);
-      setStarted(true);
+      try {
+        const data = JSON.parse(saved);
+        if (data?.info && data?.events) {
+          setInfo(data.info);
+          setEvents(data.events);
+          setStarted(true);
+        }
+      } catch {}
     }
 
-    if (hist) setHistory(JSON.parse(hist));
+    if (hist) {
+      try {
+        setHistory(JSON.parse(hist));
+      } catch {}
+    }
   }, []);
 
   useEffect(() => {
     if (!started) return;
-    localStorage.setItem(
-      "current_match",
-      JSON.stringify({ info, events })
-    );
+    localStorage.setItem("current_match", JSON.stringify({ info, events }));
   }, [events, info, started]);
 
+  // ===== スコア =====
   const calcScore = (target) => {
     let b = 0, r = 0;
     let section = "前半";
@@ -54,6 +58,7 @@ export default function App() {
     return `${b}-${r}`;
   };
 
+  // ===== イベント追加 =====
   const addEvent = (team, type, number) => {
     setEvents(prev => {
       const list = [...prev, { team, type, number }];
@@ -69,26 +74,38 @@ export default function App() {
     });
   };
 
-  // ★自動保存追加
+  // ★クラッシュ防止版（非同期対応）
   const addSection = (label) => {
-    setEvents(prev => [...prev, { type: "section", label }]);
-    if (label === "試合終了") save();
+    setEvents(prev => {
+      const newEvents = [...prev, { type: "section", label }];
+
+      if (label === "試合終了") {
+        setTimeout(() => save(newEvents), 0);
+      }
+
+      return newEvents;
+    });
   };
 
   const undo = () => setEvents(prev => prev.slice(0, -1));
 
-  // ★上書き＋日付ソート
-  const save = () => {
+  // ★安全な保存
+  const save = (targetEvents = events) => {
+    if (!info.date) return;
+
     const key = `${info.date}_${info.round}_${info.home}_${info.away}`;
 
     const newHistory = [
-      { key, info, events },
+      { key, info, events: targetEvents },
       ...history.filter(h => h.key !== key)
-    ].sort((a, b) => (a.info.date < b.info.date ? 1 : -1));
+    ].sort((a, b) => {
+      const d1 = a.info?.date || "";
+      const d2 = b.info?.date || "";
+      return d1 < d2 ? 1 : -1;
+    });
 
     setHistory(newHistory);
     localStorage.setItem("match_history", JSON.stringify(newHistory));
-    alert("履歴に保存しました");
   };
 
   const deleteHistory = (key) => {
@@ -111,10 +128,10 @@ export default function App() {
     setStarted(false);
   };
 
-  // ★画像保存（完全版）
+  // ===== 画像保存（安全版）=====
   const saveImage = async () => {
-    if (!window.html2canvas) {
-      alert("html2canvas未読込");
+    if (!window.html2canvas || !events.length) {
+      alert("画像保存できません");
       return;
     }
 
@@ -133,7 +150,6 @@ export default function App() {
       wrapper.style.background = "#000";
       wrapper.style.color = "#fff";
       wrapper.style.padding = "60px 20px";
-      wrapper.style.fontFamily = "system-ui";
       wrapper.style.width = "375px";
 
       wrapper.innerHTML = `
@@ -179,6 +195,7 @@ export default function App() {
     await createImage("後半", "second_half.png");
   };
 
+  // ===== 得点集計 =====
   const goalStats = events.reduce((acc, e) => {
     if (e.type === "goal") {
       const key = `${e.team}-${e.number}`;
@@ -320,7 +337,7 @@ export default function App() {
 
             <div style={styles.actions}>
               <button onClick={undo}>戻る</button>
-              <button onClick={save}>履歴保存</button>
+              <button onClick={()=>save()}>履歴保存</button>
               <button onClick={resetToForm}>入力に戻る</button>
               <button onClick={saveImage}>画像保存</button>
             </div>
@@ -331,4 +348,4 @@ export default function App() {
   );
 }
 
-// stylesはあなたのまま（変更なし）
+// stylesはそのまま使ってOK

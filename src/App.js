@@ -72,14 +72,27 @@ export default function App() {
 
   const undo = () => setEvents(prev => prev.slice(0, -1));
 
+  // ★上書き保存
   const save = () => {
+    const key = `${info.date}_${info.round}_${info.home}_${info.away}`;
+
     const newHistory = [
-      { info, events, date: new Date().toISOString() },
-      ...history
+      { key, info, events },
+      ...history.filter(h => h.key !== key)
     ];
+
     setHistory(newHistory);
     localStorage.setItem("match_history", JSON.stringify(newHistory));
     alert("履歴に保存しました");
+  };
+
+  // ★削除（確認付き）
+  const deleteHistory = (key) => {
+    if (!window.confirm("削除しますか？")) return;
+
+    const newHistory = history.filter(h => h.key !== key);
+    setHistory(newHistory);
+    localStorage.setItem("match_history", JSON.stringify(newHistory));
   };
 
   const loadMatch = (match) => {
@@ -89,15 +102,23 @@ export default function App() {
   };
 
   const resetToForm = () => {
+    localStorage.removeItem("current_match"); // ★追加
+    setEvents([]);
     setStarted(false);
   };
 
-  // ★画像保存（CDN版）
+  // ★安全な画像保存（UI崩さない）
   const saveImage = async () => {
     if (!window.html2canvas) {
       alert("画像保存の読み込みに失敗しました");
       return;
     }
+
+    const bottom = document.querySelector('[style*="bottom"]');
+    if (bottom) bottom.style.display = "none";
+
+    const scrollY = window.scrollY;
+    window.scrollTo(0, document.body.scrollHeight);
 
     const canvas = await window.html2canvas(document.body, {
       backgroundColor: "#000",
@@ -108,6 +129,9 @@ export default function App() {
     link.download = "score.png";
     link.href = canvas.toDataURL();
     link.click();
+
+    if (bottom) bottom.style.display = "";
+    window.scrollTo(0, scrollY);
   };
 
   const goalStats = events.reduce((acc, e) => {
@@ -151,8 +175,9 @@ export default function App() {
                 {history.map((h,i)=>(
                   <div key={i}>
                     <button onClick={()=>loadMatch(h)}>
-                      {h.info.home} vs {h.info.away}
+                      {h.info.date} / {h.info.round} / {h.info.home} vs {h.info.away}
                     </button>
+                    <button onClick={()=>deleteHistory(h.key)}>削除</button>
                   </div>
                 ))}
               </div>
